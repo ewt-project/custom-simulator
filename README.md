@@ -6,3 +6,6 @@ A developer has the flexibility to choose their platform of choice to build a si
 
 ## License
 This project is licensed under the MIT License - see the [LICENSE.md](LICENSE.md) file for details
+
+## My Installation Instructions
+Download and run the simulator.exe file.
