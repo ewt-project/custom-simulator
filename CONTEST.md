@@ -4,15 +4,16 @@ This file is maintained by the contributing author to the EWT Project, in order 
 
 ** *
 ### Contact Information
-* Name: <Your name>
-* Email: <Your email address>
+* Name: JYEE-TEST
+* Email: myemail@jyee-test.com
 
 
 ### Summary of Changes
 Detail major changes included in the branch and how they correct or improve the simulator.
-* <Your changes>
+* Added a cool new feature
+* Then added another cool new feature
 
 
 ### Video (Recommended)
 Contest participants are strongly recommended to do a brief (**5 minutes or less**) video that highlights the changes, which may be a public or private video on their platform of choice.
-* Video URL: <Your video URL>
+* Video URL: http://youtube.com/jyee-test-video
