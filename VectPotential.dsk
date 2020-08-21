@@ -1,0 +1,131 @@
+[Main Window]
+Create=1
+Visible=1
+State=0
+Left=10
+Top=3
+Width=1108
+Height=105
+MaxLeft=-1
+MaxTop=-1
+ClientWidth=1100
+ClientHeight=78
+
+[PropertyInspector]
+Create=1
+Visible=1
+State=0
+Left=6
+Top=114
+Width=190
+Height=716
+MaxLeft=-1
+MaxTop=-1
+ClientWidth=180
+ClientHeight=690
+TBDockHeight=671
+LRDockWidth=193
+Dockable=0
+SplitPos=88
+
+[Closed Files]
+File_0=SourceModule,'E:\Program Files\Borland\Delphi4\Projects\ElecMagnet_3D_Test.dfm',0,1,1,1,1,0,0
+File_1=SourceModule,'E:\Program Files\Borland\Delphi4\Projects\3D-Elec&Mag\ElecMagnet_3D.pas',0,1,897,1,899,0,1
+File_2=SourceModule,'E:\Program Files\Borland\Delphi4\Projects\3D-Elec&Mag\ElecMagnet_3D.dfm',0,1,1,1,1,0,0
+File_3=SourceModule,'E:\Program Files\Borland\Delphi4\Imports\DirectAnimation_TLB.pas',0,1,9,53,27,0,0
+File_4=SourceModule,'E:\Program Files\Borland\Delphi4\Projects\TestApp\Unit1.pas',0,1,99,1,101,0,1
+
+[Modules]
+Module0=C:\Program Files\Borland\Delphi4\Projects\VectPotential\VectorPotential.pas
+Count=1
+EditWindowCount=1
+
+[C:\Program Files\Borland\Delphi4\Projects\VectPotential\VectorPotential.pas]
+ModuleType=SourceModule
+FormState=1
+FormOnTop=0
+
+[C:\Program Files\Borland\Delphi4\Bin\ProjectGroup1.bpg]
+FormState=0
+FormOnTop=0
+
+[C:\Program Files\Borland\Delphi4\Projects\VectPotential\VectPotential.dpr]
+FormState=0
+FormOnTop=0
+
+[EditWindow0]
+CodeExplorer=CodeExplorer@EditWindow0
+MessageView=MessageView@EditWindow0
+Create=1
+Visible=1
+State=0
+Left=48
+Top=116
+Width=936
+Height=542
+MaxLeft=-1
+MaxTop=-1
+ClientWidth=928
+ClientHeight=515
+LeftPanelSize=261
+LeftPanelClients=CodeExplorer@EditWindow0
+LeftPanelData=000004000000000000000000000000000000000000000000000100000000000000000C000000436F64654578706C6F726572FFFFFFFF
+RightPanelSize=0
+BottomPanelSize=0
+BottomPanelClients=MessageView@EditWindow0
+BottomPanelData=00000400010000000B0000004D657373616765566965770000000000000000000000000000000000FFFFFFFF
+ViewCount=1
+CurrentView=0
+View0=0
+
+[CodeExplorer@EditWindow0]
+Create=1
+Visible=1
+State=0
+Left=0
+Top=11
+Width=261
+Height=486
+MaxLeft=-1
+MaxTop=-1
+ClientWidth=261
+ClientHeight=486
+TBDockHeight=305
+LRDockWidth=261
+Dockable=1
+
+[MessageView@EditWindow0]
+Create=1
+Visible=0
+State=0
+Left=-23
+Top=-545
+Width=443
+Height=52
+MaxLeft=-1
+MaxTop=-1
+ClientWidth=443
+ClientHeight=52
+TBDockHeight=52
+LRDockWidth=443
+Dockable=1
+
+[View0]
+Module=C:\Program Files\Borland\Delphi4\Projects\VectPotential\VectorPotential.pas
+CursorX=14
+CursorY=2710
+TopLine=2687
+LeftCol=1
+
+[DockHosts]
+DockHostCount=0
+
+[Watches]
+Count=0
+
+[Breakpoints]
+Count=0
+
+[AddressBreakpoints]
+Count=0
+
