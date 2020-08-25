@@ -1,5 +1,5 @@
 # Custom Simulator
-This simulator models the behavior of the electron and positron and their wave functions, authored by Declan Traill using Delphi.  This model may be used and extended by developers under this project. 
+Declann Traill's simulator models the behavior of the electron and positron and their wave functions, using Delphi.  His simulator may be used and extended by developers under this EWT project. 
 
 ## Getting Started
-A ReadMe.txt file exists with details about the simulator and its execution.  
+The repository is at https://github.com/Declan-Traill/custom-simulator. The ReadMe.txt file provides details about the simulator and its execution.  
