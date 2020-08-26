@@ -4,8 +4,8 @@ This file is maintained by the contributing author to the EWT Project, in order 
 
 ** *
 ### Contact Information
-* Name: <Your name>
-* Email: <Your email address>
+* Name: Paun Cristi
+* Email: paun.cristi12@gmail.com
 
 
 ### Summary of Changes
