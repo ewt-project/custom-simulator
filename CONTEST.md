@@ -4,15 +4,25 @@ This file is maintained by the contributing author to the EWT Project, in order 
 
 ** *
 ### Contact Information
-* Name: Paun Cristi
-* Email: paun.cristi12@gmail.com
-* Country: Romania
+* Name: 
+* Email: 
+* Country: 
 * Bank account: 
 
 
 ### Summary of Changes
 Detail major changes included in the branch and how they correct or improve the simulator.
-* My EWT simulation uses DirectX11 (so I updated the license to include DirectX MIT license). It uses optimized copute shaders for maximum performance.
+*
+
+
+### Video (Recommended)
+Contest participants are strongly recommended to do a brief (**5 minutes or less**) video that highlights the changes, which may be a public or private video on their platform of choice.
+*
+
+
+### PREVIOUS Entry Example. From Phase 1.
+
+ My EWT simulation uses DirectX11 (so I updated the license to include DirectX MIT license). It uses optimized copute shaders for maximum performance.
   One needs Microsoft Visual Studio 2017 to compile the source code (Community Edition will do). Also you need DirectX installed (basically make sure you have latest video drivers).
   
   What is done so far:
@@ -23,8 +33,5 @@ Detail major changes included in the branch and how they correct or improve the 
   
   In order to start the simulation one must start \EWT_Simulator\EWT_Simulator.exe (at this moment the executable cannot be in root directory, I'll investigate that).
   Also please note that the application tends to loose focus after running, so please re-focus it.
-
-
-### Video (Recommended)
-Contest participants are strongly recommended to do a brief (**5 minutes or less**) video that highlights the changes, which may be a public or private video on their platform of choice.
-* Video URL: https://drive.google.com/file/d/1OstgwoC2ImFr23vyiAMXnI3orzkWgmkg/view?usp=sharing
+  
+  * Video URL: https://drive.google.com/file/d/1OstgwoC2ImFr23vyiAMXnI3orzkWgmkg/view?usp=sharing
