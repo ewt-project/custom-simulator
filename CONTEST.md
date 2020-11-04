@@ -7,7 +7,6 @@ This file is maintained by the contributing author to the EWT Project, in order 
 * Name: 
 * Email: 
 * Country: 
-* Bank account: 
 
 
 ### Summary of Changes
