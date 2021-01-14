@@ -29,13 +29,13 @@ const
   GRID_LIMIT=270;
 {$ELSE}
   GRID_LIMIT=280;
-{$ENDIF}
+{$IFEND}
 
 {$IF STANDING_WAVE_ANALYSIS}
   GRID_SIZE=100;
 {$ELSE}
   GRID_SIZE=100;
-{$ENDIF}
+{$IFEND}
 
 type            {Type declaration for a vector resolved into x,y & z components}
 
@@ -43,7 +43,7 @@ type            {Type declaration for a vector resolved into x,y & z components}
   FloatVar=single;
 {$ELSE}
   FloatVar=single;
-{$ENDIF}
+{$IFEND}
 
   Vector = record
     x: FloatVar;
@@ -85,7 +85,7 @@ type            {Type declaration for a vector resolved into x,y & z components}
 {$IF TWO_PARTICLE_REFLECTION_FIELDS}
     particle_pos_Reflected: Vector;
     particle_neg_Reflected: Vector;
-{$ENDIF}
+{$IFEND}
   end;
 
   PointGrp = record
@@ -304,6 +304,7 @@ type            {Type declaration for a vector resolved into x,y & z components}
     Profile_RadioButton_ActualSize: TRadioButton;
     ShowEnergy_CheckBox: TCheckBox;
     ProgressBar1: TProgressBar;
+    Percent_c: TLabel;
     procedure FormCreate(Sender: TObject);
     procedure Start1Click(Sender: TObject);
     procedure Start2Click(Sender: TObject);
@@ -614,7 +615,7 @@ const
 {$IF TWO_PARTICLE_REFLECTION_FIELDS}
   PARTICLE_POS_REFLECTED_FIELD=12;
   PARTICLE_NEG_REFLECTED_FIELD=13;
-{$ENDIF}
+{$IFEND}
 
 type
   { Create the array type }
@@ -1134,7 +1135,7 @@ var
   orthogonal_particles: boolean;
   particles_end_to_end: boolean;
   particle1_spin, particle2_spin, saved_sign: integer;
-  pass, maxpass, n: smallint;
+  pass, maxpass, n, x_sign: smallint;
   AveragePowerPerPoint,ReflectedPowerAtPoint,PressurePerPoint,Force,Accel: Extended;
   PowerSum_neg, PowerSum_pos, Pressure: Extended;
   PowerCount_neg, PowerCount_pos: integer;
@@ -1149,7 +1150,7 @@ var
   c1,c2,c3,A,DistFromCenter,ExpectedAccel,E_Energy_Sum,B_Energy_Sum,MeC_Hhat: Extended;
   field_stats: boolean;
   in_out_waves, sine_wave_sum: boolean;
-  progress, progress_inc: single;
+  progress, progress_inc, r_contracted, x_contracted, x_velocity, gamma, r_gamma: single;
 
 begin
   progress:=0;
@@ -1389,6 +1390,7 @@ begin
   if maxpass=1 then progress_inc:=22;
 
   if two_particles then begin
+    Percent_c.Visible:=false;
     DistBetweenLabel.Visible:=true;
     DistBetween.Visible:=true;
     DistBetweenUnits.Visible:=true;
@@ -1396,10 +1398,14 @@ begin
 {$IF TWO_PARTICLE_REFLECTION_FIELDS}
     Field11.Visible:=true;
     Field12.Visible:=true;
-{$ENDIF}
+{$IFEND}
     if (Time = 0) then begin
       try
-        PercentBetweenParticles:=extended.Parse(DistBetween.Text);
+        PercentBetweenParticles:=strtofloat(DistBetween.Text);
+        if (0 = PercentBetweenParticles) then begin
+          DistBetween.Text:='50';
+          PercentBetweenParticles:=strtofloat(DistBetween.Text);
+        end;
         PercentBetweenParticles:=Round(PercentBetweenParticles*100)/100;
       except
         on E: Exception do begin
@@ -1422,9 +1428,10 @@ begin
     end;
   end
   else begin
+    Percent_c.Visible:=true;
     DistBetweenLabel.Visible:=false;
-    DistBetween.Visible:=false;
-    DistBetweenUnits.Visible:=false;
+//    DistBetween.Visible:=false;
+//    DistBetweenUnits.Visible:=false;
     ShowEnergy_CheckBox.Visible:=false;
     Field11.Visible:=false;
     Field12.Visible:=false;
@@ -1633,22 +1640,36 @@ begin
              else begin
                r:=sqrt( sqr(x*dx) + sqr(y*dy) + sqr(z*dz) );
                if ( r < ElectronComptonRadius ) then r:=ElectronComptonRadius;   // prevent divide by zero errors
+
+               velocity := SpeedOfLight*(strtofloat(DistBetween.Text)/100);
+               gamma := 1/(sqrt(1 - sqr(velocity)/sqr(SpeedOfLight)));
+
+               x_contracted := (x*dx)/gamma;
+
+               r_contracted:=sqrt( sqr(x_contracted) + sqr(y*dy) + sqr(z*dz) );
+               if ( r_contracted < ElectronComptonRadius ) then r_contracted:=ElectronComptonRadius;   // prevent divide by zero errors
+
+               r_gamma:=sqrt( sqr((x*dx)*gamma) + sqr(y*dy) + sqr(z*dz) );
+               if ( r_gamma < ElectronComptonRadius ) then r_gamma:=ElectronComptonRadius;   // prevent divide by zero errors
+
+               x_sign := 1;
+               if (xpos < midx) then x_sign := -x_sign;
+               x_velocity := sqrt(sqr(x*dx)/sqr(r))*x_sign*velocity;
              end;
 
              /////////////////////////////////////
              /// WAVE FUNCTION TO TEST
              ///
              ///
-
              case StartOption of
                1: begin  // if electron being modeled
-                   theta:=theta_const*(Time - r/SpeedOfLight);
-                   term1:=sign(ElectronCharge) * delta/r;
-                   end;
+                   theta:=theta_const*(Time - r/(SpeedOfLight + x_velocity));
+                   term1:=sign(ElectronCharge) * delta/r_gamma;
+               end;
 
                2: begin  // if positron being modeled
-                   theta:=theta_const*(Time + r/SpeedOfLight);
-                   term1:=sign(PositronCharge) * delta/r;
+                   theta:=theta_const*(Time + r/(SpeedOfLight + x_velocity));
+                   term1:=sign(PositronCharge) * delta/r_gamma;
                end;
 
                3: begin  // if two electrons being modeled
@@ -1778,57 +1799,73 @@ begin
                end;
 
                21: begin  // if electron OUT wave being modeled
-                   term1:=sign(ElectronCharge) * delta/r;
+                   term1:=sign(ElectronCharge) * delta/r_gamma;
 
                    // X coordinate terms
                    term2:=0;
-                   if not CheckBox4.Checked then term2:=term2 + Cos(theta_const*(-Time + r/SpeedOfLight));  // IN   y2
-                   if not CheckBox5.Checked then term2:=term2 + Cos(theta_const*(Time + r/SpeedOfLight));   // IN   y1
-                   if not CheckBox6.Checked then term2:=term2 - Cos(theta_const*(Time + r/SpeedOfLight));   // IN   y5
-                   if not CheckBox7.Checked then term2:=term2 + Cos(theta_const*(-Time + r/SpeedOfLight));  // OUT  y6
+
+                   if not CheckBox4.Checked then term2:=term2 + Cos(theta_const*(-Time + r/(SpeedOfLight - x_velocity)));  // IN   y2
+                   //if not CheckBox5.Checked then term2:=term2 + Cos(theta_const*(Time + r/(SpeedOfLight - x_velocity)));   // IN   y1
+                   //if not CheckBox6.Checked then term2:=term2 - Cos(theta_const*(Time + r/(SpeedOfLight - x_velocity)));   // IN   y5
+                   if not CheckBox7.Checked then term2:=term2 + Cos(theta_const*(-Time + r/(SpeedOfLight + x_velocity)));  // OUT  y6
 
                    // Y coordinate terms
                    term3:=0;
-                   if not CheckBox8.Checked then term3:=term3 - Sin(theta_const*(Time + r/SpeedOfLight));   // OUT  y7
-                   if not CheckBox9.Checked then term3:=term3 - Sin(theta_const*(-Time + r/SpeedOfLight));  // OUT  y3
-                   if not CheckBox10.Checked then term3:=term3 - Sin(theta_const*(-Time + r/SpeedOfLight)); // OUT  y8
-                   if not CheckBox11.Checked then term3:=term3 + Sin(theta_const*(Time + r/SpeedOfLight));  // IN   y4
+                   if not CheckBox8.Checked then term3:=term3 - Sin(theta_const*(Time + r/(SpeedOfLight + x_velocity)));   // OUT  y7
+                   if not CheckBox9.Checked then term3:=term3 - Sin(theta_const*(-Time + r/(SpeedOfLight + x_velocity)));  // OUT  y3
+                   if not CheckBox10.Checked then term3:=term3 - Sin(theta_const*(-Time + r/(SpeedOfLight + x_velocity))); // OUT  y8
+                   if not CheckBox11.Checked then term3:=term3 + Sin(theta_const*(Time + r/(SpeedOfLight - x_velocity)));  // IN   y4
+
+                   if FrameCount > 30 then begin
+                     CheckBox1.Checked:=false;
+                     save_frames:=false;
+                   end;
                end;
 
                22: begin  // if electron IN wave being modeled
-                   term1:=sign(ElectronCharge) * delta/r;
+                   term1:=sign(ElectronCharge) * delta/r_gamma;
 
                    // X coordinate terms
                    term2:=0;
-                   if CheckBox4.Checked then term2:=term2 + Cos(theta_const*(-Time + r/SpeedOfLight));  // IN   y2
-                   if CheckBox5.Checked then term2:=term2 + Cos(theta_const*(Time + r/SpeedOfLight));   // IN   y1
-                   if CheckBox6.Checked then term2:=term2 - Cos(theta_const*(Time + r/SpeedOfLight));   // IN   y5
-                   if CheckBox7.Checked then term2:=term2 + Cos(theta_const*(-Time + r/SpeedOfLight));  // OUT  y6
+                   if CheckBox4.Checked then term2:=term2 + Cos(theta_const*(-Time + r/(SpeedOfLight - x_velocity)));  // IN   y2
+                   //if CheckBox5.Checked then term2:=term2 + Cos(theta_const*(Time + r/(SpeedOfLight - x_velocity)));   // IN   y1
+                   //if CheckBox6.Checked then term2:=term2 - Cos(theta_const*(Time + r/(SpeedOfLight - x_velocity)));   // IN   y5
+                   if CheckBox7.Checked then term2:=term2 + Cos(theta_const*(-Time + r/(SpeedOfLight + x_velocity)));  // OUT  y6
 
                    // Y coordinate terms
                    term3:=0;
-                   if CheckBox8.Checked then term3:=term3 - Sin(theta_const*(Time + r/SpeedOfLight));   // OUT  y7
-                   if CheckBox9.Checked then term3:=term3 - Sin(theta_const*(-Time + r/SpeedOfLight));  // OUT  y3
-                   if CheckBox10.Checked then term3:=term3 - Sin(theta_const*(-Time + r/SpeedOfLight)); // OUT  y8
-                   if CheckBox11.Checked then term3:=term3 + Sin(theta_const*(Time + r/SpeedOfLight));  // IN   y4
+                   if CheckBox8.Checked then term3:=term3 - Sin(theta_const*(Time + r/(SpeedOfLight + x_velocity)));   // OUT  y7
+                   if CheckBox9.Checked then term3:=term3 - Sin(theta_const*(-Time + r/(SpeedOfLight + x_velocity)));  // OUT  y3
+                   if CheckBox10.Checked then term3:=term3 - Sin(theta_const*(-Time + r/(SpeedOfLight + x_velocity))); // OUT  y8
+                   if CheckBox11.Checked then term3:=term3 + Sin(theta_const*(Time + r/(SpeedOfLight - x_velocity)));  // IN   y4
+
+                   if FrameCount > 30 then begin
+                     CheckBox1.Checked:=false;
+                     save_frames:=false;
+                   end;
                end;
 
                23: begin  // if electron OUT+IN wave being modeled
-                   term1:=sign(ElectronCharge) * delta/r;
+                   term1:=sign(ElectronCharge) * delta/r_gamma;
 
                    // X coordinate terms
                    term2:=0;
-                   term2:=term2 + Cos(theta_const*(-Time + r/SpeedOfLight));  // IN   y2
-                   term2:=term2 + Cos(theta_const*(Time + r/SpeedOfLight));   // IN   y1
-                   term2:=term2 - Cos(theta_const*(Time + r/SpeedOfLight));   // IN   y5
-                   term2:=term2 + Cos(theta_const*(-Time + r/SpeedOfLight));  // OUT  y6
+                   term2:=term2 + Cos(theta_const*(-Time + r/(SpeedOfLight - x_velocity)));  // IN   y2
+                   //term2:=term2 + Cos(theta_const*(Time + r/(SpeedOfLight - x_velocity)));   // IN   y1
+                   //term2:=term2 - Cos(theta_const*(Time + r/(SpeedOfLight - x_velocity)));   // IN   y5
+                   term2:=term2 + Cos(theta_const*(-Time + r/(SpeedOfLight + x_velocity)));  // OUT  y6
 
                    // Y coordinate terms
                    term3:=0;
-                   term3:=term3 - Sin(theta_const*(Time + r/SpeedOfLight));   // OUT  y7
-                   term3:=term3 - Sin(theta_const*(-Time + r/SpeedOfLight));  // OUT  y3
-                   term3:=term3 - Sin(theta_const*(-Time + r/SpeedOfLight));  // OUT  y8
-                   term3:=term3 + Sin(theta_const*(Time + r/SpeedOfLight));   // IN   y4
+                   term3:=term3 - Sin(theta_const*(Time + r/(SpeedOfLight + x_velocity)));   // OUT  y7
+                   term3:=term3 - Sin(theta_const*(-Time + r/(SpeedOfLight + x_velocity)));  // OUT  y3
+                   term3:=term3 - Sin(theta_const*(-Time + r/(SpeedOfLight + x_velocity)));  // OUT  y8
+                   term3:=term3 + Sin(theta_const*(Time + r/(SpeedOfLight - x_velocity)));   // IN   y4
+
+                   if FrameCount > 30 then begin
+                     CheckBox1.Checked:=false;
+                     save_frames:=false;
+                   end;
                end;
              end;
 
@@ -2070,7 +2107,9 @@ begin
              // Electric Field is: Grad(Div(Psi)) - d/dt of Vector Potential field
              Scalar_Group:=ScalarGroup(NewGroup, ELECTRIC_POTENTIAL_FIELD);
 
-             // This is the Laplacian of Psi, which is -grad of ElectricPotential minus dA/dt
+             // This is the Vector Laplacian of Psi, which is -grad of ElectricPotential minus dA/dt.
+             // As Cartesian coordinates are being used, the Vector Laplacian is calculated as the
+             // Scalar Laplacian on each x,y,z coordinate.
              // (will add the rest of the Electric field definition once the Vector Potential is known)
              // E = -grad(div(Psi)) - dA/dt
              vect:=ScalarGrad(Scalar_Group);
@@ -2566,7 +2605,7 @@ begin
             particle_neg_Reflected.y := -particle_neg_Reflected.y;
             particle_neg_Reflected.z := -particle_neg_Reflected.z;
           end;
- {$ENDIF}
+ {$IFEND}
           Power_x1:=particle1_Power[xpos, ypos, zpos].x;
           Power_x2:=particle2_Power[xpos, ypos, zpos].x;
 
@@ -3384,7 +3423,7 @@ repeat
           PARTICLE_NEG_REFLECTED_FIELD: begin {Show Electric, Magnetic, Power flow, Hertzian, Vector Potential or Electric Potential Fields}
 {$ELSE}
           PSI_CURL_VECTOR_FIELD: begin {Show Electric, Magnetic, Power flow, Hertzian, Vector Potential or Electric Potential Fields}
-{$ENDIF}
+{$IFEND}
                    VectorType:=true;
                  end;
           E_ELECTRIC_FIELD: value:=E_Energy(vect);   {Show energy in Electric Field}
@@ -3615,7 +3654,7 @@ repeat
           fname := 'Particle_pos_Reflected';
         PARTICLE_NEG_REFLECTED_FIELD:
           fname := 'Particle_neg_Reflected';
-{$ENDIF}
+{$IFEND}
       end;
 
       if (FrameCount < 10) then fname:=fname+'00000'
@@ -3673,7 +3712,7 @@ procedure TForm1.DistBetweenChange(Sender: TObject);
 var
   newPercentage: extended;
 begin
-  newPercentage:=extended.Parse(DistBetween.Text);
+  newPercentage:=strtofloat(DistBetween.Text);
   newPercentage:=Round(newPercentage*100)/100;
 
   if (PercentBetweenParticles <> newPercentage) then begin
@@ -4031,7 +4070,7 @@ begin
 {$IF TWO_PARTICLE_REFLECTION_FIELDS}
   New_DisplayField:=PARTICLE_POS_REFLECTED_FIELD;
   DoUpdate:=true;
-{$ENDIF}
+{$IFEND}
 end;
 
 procedure TForm1.Field12Click(Sender: TObject);
@@ -4040,7 +4079,7 @@ begin
 {$IF TWO_PARTICLE_REFLECTION_FIELDS}
   New_DisplayField:=PARTICLE_NEG_REFLECTED_FIELD;
   DoUpdate:=true;
-{$ENDIF}
+{$IFEND}
 end;
 
 procedure TForm1.TimeFreezeClick(Sender: TObject);
@@ -5423,7 +5462,7 @@ begin
 {$IF TWO_PARTICLE_REFLECTION_FIELDS}
       PARTICLE_POS_REFLECTED_FIELD: Vect:=particle_pos_Reflected;
       PARTICLE_NEG_REFLECTED_FIELD: Vect:=particle_neg_Reflected;
-{$ENDIF}
+{$IFEND}
     end;
   Result:=Vect;
 end;
@@ -5445,7 +5484,7 @@ begin
 {$IF TWO_PARTICLE_REFLECTION_FIELDS}
       PARTICLE_POS_REFLECTED_FIELD:   isNull:=VectorNull(particle_pos_Reflected);
       PARTICLE_NEG_REFLECTED_FIELD:   isNull:=VectorNull(particle_neg_Reflected);
-{$ENDIF}
+{$IFEND}
     end;
   end;
   Result:=isNull;
@@ -5793,7 +5832,7 @@ var
   newWidth: extended;
 begin
   try
-    newWidth:=extended.Parse(Form.ActualGridWidth.Text);
+    newWidth:=strtofloat(Form.ActualGridWidth.Text);
 
     if (newWidth=0) then
       newWidth:=ActualWidth;
@@ -6236,7 +6275,7 @@ begin
            VectGroup.v5:=p5.particle_neg_Reflected;
            VectGroup.v6:=p6.particle_neg_Reflected;
       end;
-{$ENDIF}
+{$IFEND}
       else VectGroup:=NullVectGrp;
     end;
   Result:=VectGroup;
@@ -6311,7 +6350,7 @@ begin
         PARTICLE_NEG_REFLECTED_FIELD: begin {Show Electric, Magnetic, Power flow, Hertzian, Vector Potential or Electric Potential Fields}
 {$ELSE}
         PSI_CURL_VECTOR_FIELD: begin {Show Electric, Magnetic, Power flow, Hertzian, Vector Potential or Electric Potential Fields}
-{$ENDIF}
+{$IFEND}
             Result:=true;
         end;
     end;
@@ -6357,7 +6396,7 @@ begin
           PARTICLE_NEG_REFLECTED_FIELD: begin {calc Electric, Magnetic, Power flow, Hertzian, Vector Potential or Electric Potential Fields}
 {$ELSE}
           PSI_CURL_VECTOR_FIELD: begin {calc Electric, Magnetic, Power flow, Hertzian, Vector Potential or Electric Potential Fields}
-{$ENDIF}
+{$IFEND}
                    Vect:=VectorProperty(Field,points[scr]^[i,j,k]);
                    VectorType:=true;
                  end;
@@ -6422,7 +6461,7 @@ begin
           PARTICLE_NEG_REFLECTED_FIELD: begin {calc Electric, Magnetic, Power flow, Hertzian, Vector Potential or Electric Potential Fields}
 {$ELSE}
           PSI_CURL_VECTOR_FIELD: begin {calc Electric, Magnetic, Power flow, Hertzian, Vector Potential or Electric Potential Fields}
-{$ENDIF}
+{$IFEND}
                    Vect:=VectorProperty(Field,points[scr]^[i,j,k]);
                    VectorType:=true;
                  end;
@@ -6528,7 +6567,7 @@ procedure TForm1.ActualGridWidthChange(Sender: TObject);
 var
   newWidth: extended;
 begin
-  newWidth:=extended.Parse(ActualGridWidth.Text);
+  newWidth:=strtofloat(ActualGridWidth.Text);
 
   if (ActualWidth <> newWidth) then begin
     if not DoUpdate then ProfileCancel();
