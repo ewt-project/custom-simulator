@@ -305,6 +305,7 @@ type            {Type declaration for a vector resolved into x,y & z components}
     ShowEnergy_CheckBox: TCheckBox;
     ProgressBar1: TProgressBar;
     Percent_c: TLabel;
+    Start24: TRadioButton;
     procedure FormCreate(Sender: TObject);
     procedure Start1Click(Sender: TObject);
     procedure Start2Click(Sender: TObject);
@@ -342,6 +343,7 @@ type            {Type declaration for a vector resolved into x,y & z components}
     procedure Start21Click(Sender: TObject);
     procedure Start22Click(Sender: TObject);
     procedure Start23Click(Sender: TObject);
+    procedure Start24Click(Sender: TObject);
     procedure TimeFreezeClick(Sender: TObject);
     procedure ZPlaneChange(Sender: TObject);
     procedure DisplayLevelChange(Sender: TObject);
@@ -528,7 +530,7 @@ const
                             (1,1,0),
                             (0,0,0)));
 
-  StartOptionCaptions : array[1..23] of String = (
+  StartOptionCaptions : array[1..24] of String = (
                                   ('1: e'),
                                   ('2: p'),
                                   ('3: ee^^'),
@@ -551,7 +553,8 @@ const
                                   ('20: ep^v'),
                                   ('21: e OUT'),
                                   ('22: e IN'),
-                                  ('23: e BOTH')
+                                  ('23: e BOTH'),
+                                  ('24: Proton')
                                   );
 const
 
@@ -571,12 +574,21 @@ const
   Permeability=4*Pi*1E-7; {Permeability of free space (Henry/m)}
   Hhat=1.054571596E-34;   {reduced Planck's constant}
   Ek=8.9875517873681764e9; {Coulomb's constant}
+  alpha=0.007297352569311; {Fine Structure Constant}
 
   ElectronCharge=-(1.60217662E-19);
   PositronCharge=(1.60217662E-19);
+  ProtonCharge=(1.60217662E-19);
+
   ElectronMass=9.1093835611E-31;
   ElectronComptonWavelength=2.4263102175E-12;
-  ElectronComptonRadius=3.86159192751E-13;
+  ElectronComptonRadius=ElectronComptonWavelength/(2*Pi);
+  ElectronClassicalRadius=alpha*ElectronComptonRadius;
+
+  ProtonMass=1.6726219E-27;
+  ProtonComptonWavelength=1.32140985539E-15;
+  ProtonComptonRadius=ProtonComptonWavelength/(2*Pi);
+  ProtonClassicalRadius=alpha*ProtonComptonRadius;
 
   ElectronNeutrinoMass=1.17726E-35;
 
@@ -849,6 +861,7 @@ begin
   Start21.Checked:=false;
   Start22.Checked:=false;
   Start23.Checked:=false;
+  Start24.Checked:=false;
 
   case StartOption of
    1: begin  // if electron being modelled
@@ -941,6 +954,10 @@ begin
 
    23: begin  // if electron OUT+IN wave being modelled
       Start23.Checked:=true;
+      end;
+
+   24: begin  // if proton wave being modelled
+      Start24.Checked:=true;
       end;
   end;
 
@@ -1115,7 +1132,7 @@ end;
 
 procedure TForm1.RecalcFields(scr:smallint);
 var
-  r,r1,r2,x,y,z,unit_x,unit_y,unit_z,actual_x,actual_y,actual_z : extended;
+  r,r1,r2,x,y,z,unit_x,unit_y,unit_z,actual_x,actual_y,actual_z,r_lower_limit : extended;
   theta, theta1, theta2, delta, theta_const, expTheta, lnTheta : extended;
   term0, term1, term1a, term1b, term2, term2a, term2b, term3, term3a, term3b : extended;
   psi_x, psi_y, psi_z, psi_x_particle1, psi_y_particle1, psi_z_particle1, psi_x_particle2, psi_y_particle2, psi_z_particle2 : extended;
@@ -1130,8 +1147,7 @@ var
   I: Integer;
   ShellThickness: Extended;
   dist: longint;
-  electron: boolean;
-  positron: boolean;
+  electron, positron, proton: boolean;
   orthogonal_particles: boolean;
   particles_end_to_end: boolean;
   particle1_spin, particle2_spin, saved_sign: integer;
@@ -1217,6 +1233,9 @@ begin
   sine_wave_sum:=false;
   E_Energy_Sum:=0;
   B_Energy_Sum:=0;
+
+  proton:=false;
+  r_lower_limit:=ElectronComptonRadius;
 
   case StartOption of
    1: begin  // if electron being modeled
@@ -1385,6 +1404,34 @@ begin
        sine_wave_sum:=true;
        maxpass:=1;
       end;
+
+   24: begin  // if proton being modeled
+       electron:=false;
+       positron:=false;
+       proton:=true;
+       r_lower_limit:=ProtonComptonRadius;
+       two_particles:=false;
+       maxpass:=1;
+      end;
+  end;
+
+  if (IterationCount = 0) then begin
+    if proton then begin
+      if (strtofloat(ActualGridWidth.Text) > 1.00E-13) then begin
+        ActualGridWidth.Text:=FloatToStrf(1.5E-14,ffExponent,5,2); {display actual size in metres that grid represents}
+        RateOfTime.Position:=3;
+        ProcSetGridGlobals(Self);
+        DoUpdate:=true;
+        Restart:=true;
+      end;
+    end
+    else if (strtofloat(ActualGridWidth.Text) < 1.00E-13) then begin
+      ActualGridWidth.Text:=FloatToStrf(3.0E-11,ffExponent,5,2); {display actual size in metres that grid represents}
+      RateOfTime.Position:=4000;
+      ProcSetGridGlobals(Self);
+      DoUpdate:=true;
+      Restart:=true;
+    end;
   end;
 
   if maxpass=1 then progress_inc:=22;
@@ -1487,7 +1534,7 @@ begin
 
        /////////////////////////////////////
 
-       if ( neutrino ) then begin
+       if neutrino then begin
          SpinConstant:=( Hhat / ElectronNeutrinoMass ); // Metres^2/(Radians*Second)
          delta := 1;
 
@@ -1495,6 +1542,16 @@ begin
          // then converting f to angular frequency w, via w = 2*Pi*f )
          // ( theta_const could be, equivalently : - c^2/SpinConstant )
          theta_const:=( -ElectronNeutrinoMass * sqr(SpeedOfLight) ) / Hhat;
+       end
+       else if proton then begin
+         SpinConstant:=( Hhat / ProtonMass ); // Metres^2/(Radians*Second)
+         delta := ( abs(ProtonCharge) * Hhat ) / ( 2 * Pi * ProtonMass * SpeedOfLight * Permittivity );
+         if in_out_waves then delta:=delta/2; // each IN/OUT wave is only half the proton energy (wave amplitude)
+
+         // theta_const is in Radians/Second ( i.e. the same as solving E = hf for f, where E=mc^2, and h=2*Pi*Hhat,
+         // then converting f to angular frequency w, via w = 2*Pi*f )
+         // ( theta_const could be, equivalently : - c^2/SpinConstant )
+         theta_const:=( -ProtonMass * sqr(SpeedOfLight) ) / Hhat;
        end
        else begin
          SpinConstant:=( Hhat / ElectronMass ); // Metres^2/(Radians*Second)
@@ -1554,7 +1611,11 @@ begin
          end;
        end;
 
-       Etotal:=(Permeability*SpeedOfLight*SpeedOfLight + 1/Permittivity)*sqr(ElectronCharge)/(8*Pi*2.81794E-15);
+       if proton then
+         Etotal:=(Permeability*SpeedOfLight*SpeedOfLight + 1/Permittivity)*sqr(ProtonCharge)/(8*Pi*ProtonClassicalRadius)
+       else
+         Etotal:=(Permeability*SpeedOfLight*SpeedOfLight + 1/Permittivity)*sqr(ElectronCharge)/(8*Pi*ElectronClassicalRadius);
+
        if two_particles then Etotal := 2*Etotal;
 
        if not two_particles or ShowEnergy_CheckBox.Checked then begin
@@ -1631,15 +1692,15 @@ begin
              if (two_particles) then begin
                // get actual distance in metres
                r1:=sqrt( sqr((xpos - particle1_x)*dx) + sqr(y*dy) + sqr(z*dz) );
-               if ( r1 < ElectronComptonRadius ) then r1:=ElectronComptonRadius;   // prevent divide by zero errors
+               if ( r1 < r_lower_limit ) then r1:=r_lower_limit;   // prevent divide by zero errors
 
                // get actual distance in metres
                r2:=sqrt( sqr((xpos - particle2_x)*dx) + sqr(y*dy) + sqr(z*dz) );
-               if ( r2 < ElectronComptonRadius ) then r2:=ElectronComptonRadius;   // prevent divide by zero errors
+               if ( r2 < r_lower_limit ) then r2:=r_lower_limit;   // prevent divide by zero errors
              end
              else begin
                r:=sqrt( sqr(x*dx) + sqr(y*dy) + sqr(z*dz) );
-               if ( r < ElectronComptonRadius ) then r:=ElectronComptonRadius;   // prevent divide by zero errors
+               if ( r < r_lower_limit ) then r:=r_lower_limit;   // prevent divide by zero errors
 
                velocity := SpeedOfLight*(strtofloat(DistBetween.Text)/100);
                gamma := 1/(sqrt(1 - sqr(velocity)/sqr(SpeedOfLight)));
@@ -1647,10 +1708,10 @@ begin
                x_contracted := (x*dx)/gamma;
 
                r_contracted:=sqrt( sqr(x_contracted) + sqr(y*dy) + sqr(z*dz) );
-               if ( r_contracted < ElectronComptonRadius ) then r_contracted:=ElectronComptonRadius;   // prevent divide by zero errors
+               if ( r_contracted < r_lower_limit ) then r_contracted:=r_lower_limit;   // prevent divide by zero errors
 
                r_gamma:=sqrt( sqr((x*dx)*gamma) + sqr(y*dy) + sqr(z*dz) );
-               if ( r_gamma < ElectronComptonRadius ) then r_gamma:=ElectronComptonRadius;   // prevent divide by zero errors
+               if ( r_gamma < r_lower_limit ) then r_gamma:=r_lower_limit;   // prevent divide by zero errors
 
                x_sign := 1;
                if (xpos < midx) then x_sign := -x_sign;
@@ -1867,6 +1928,11 @@ begin
                      save_frames:=false;
                    end;
                end;
+
+               24: begin  // if proton being modeled
+                   theta:=theta_const*(Time + r/(SpeedOfLight + x_velocity));
+                   term1:=sign(ProtonCharge) * delta/r_gamma;
+               end;
              end;
 
              if not sine_wave_sum then begin
@@ -2020,37 +2086,43 @@ begin
                  if (two_particles) then begin
                    // get actual distance in metres
                    r1:=sqrt( sqr((xpos - particle1_x)*dx) + sqr(y*dy) + sqr(z*dz) );
-                   if ( r1 < ElectronComptonRadius ) then r1:=ElectronComptonRadius;   // prevent divide by zero errors
+                   if ( r1 < r_lower_limit ) then r1:=r_lower_limit;   // prevent divide by zero errors
 
                    // get actual distance in metres
                    r2:=sqrt( sqr((xpos - particle2_x)*dx) + sqr(y*dy) + sqr(z*dz) );
-                   if ( r2 < ElectronComptonRadius ) then r2:=ElectronComptonRadius;   // prevent divide by zero errors
+                   if ( r2 < r_lower_limit ) then r2:=r_lower_limit;   // prevent divide by zero errors
 
                    ElectricPotential:=0;
 
                    if (pass=1) or (pass=3) then begin
                      if electron then
                        ElectricPotential:=ElectricPotential + abs(particle1_spin)*ElectronCharge/(4*Pi*r1*Permittivity)
-                     else
-                       ElectricPotential:=ElectricPotential + abs(particle1_spin)*PositronCharge/(4*Pi*r1*Permittivity);
+                     else if positron then
+                       ElectricPotential:=ElectricPotential + abs(particle1_spin)*PositronCharge/(4*Pi*r1*Permittivity)
+                     else if proton then
+                       ElectricPotential:=ElectricPotential + abs(particle1_spin)*ProtonCharge/(4*Pi*r1*Permittivity);
                    end;
 
                    if (pass=2) or (pass=3) then begin
                      if positron then
                        ElectricPotential:=ElectricPotential + abs(particle2_spin)*PositronCharge/(4*Pi*r2*Permittivity)
-                     else
-                       ElectricPotential:=ElectricPotential + abs(particle2_spin)*ElectronCharge/(4*Pi*r2*Permittivity);
+                     else if electron then
+                       ElectricPotential:=ElectricPotential + abs(particle2_spin)*ElectronCharge/(4*Pi*r2*Permittivity)
+                     else if proton then
+                       ElectricPotential:=ElectricPotential + abs(particle2_spin)*ProtonCharge/(4*Pi*r1*Permittivity);
                    end;
                  end
                  else begin
                    // get actual distance in metres
                    r:=sqrt( sqr(x*dx) + sqr(y*dy) + sqr(z*dz) );
-                   if ( r < ElectronComptonRadius ) then r:=ElectronComptonRadius;   // prevent divide by zero errors
+                   if ( r < r_lower_limit ) then r:=r_lower_limit;   // prevent divide by zero errors
 
                    if electron then
                      ElectricPotential:=ElectronCharge/(4*Pi*r*Permittivity)
-                   else
-                     ElectricPotential:=PositronCharge/(4*Pi*r*Permittivity);
+                   else if positron then
+                     ElectricPotential:=PositronCharge/(4*Pi*r*Permittivity)
+                   else if proton then
+                     ElectricPotential:=ProtonCharge/(4*Pi*r*Permittivity);
                  end;
                end
                else begin
@@ -2189,14 +2261,28 @@ begin
 
                  // A = - (1/c^2)*dYe/dt = -i*(Me/Hhat)*Ye
                  if ( ViewTop ) then begin
-                   x := -(-(ElectronMass/Hhat)*points[NewScreen]^[xpos,ypos,zpos].PsiVect.y);
-                   y := -((ElectronMass/Hhat)*points[NewScreen]^[xpos,ypos,zpos].PsiVect.x);
-                   z := -((ElectronMass/Hhat)*points[NewScreen]^[xpos,ypos,zpos].PsiVect.z);
+                   if proton then begin
+                     x := -(-(ProtonMass/Hhat)*points[NewScreen]^[xpos,ypos,zpos].PsiVect.y);
+                     y := -((ProtonMass/Hhat)*points[NewScreen]^[xpos,ypos,zpos].PsiVect.x);
+                     z := -((ProtonMass/Hhat)*points[NewScreen]^[xpos,ypos,zpos].PsiVect.z);
+                   end
+                   else begin
+                     x := -(-(ElectronMass/Hhat)*points[NewScreen]^[xpos,ypos,zpos].PsiVect.y);
+                     y := -((ElectronMass/Hhat)*points[NewScreen]^[xpos,ypos,zpos].PsiVect.x);
+                     z := -((ElectronMass/Hhat)*points[NewScreen]^[xpos,ypos,zpos].PsiVect.z);
+                   end;
                  end
                  else begin
-                   x := -(-(ElectronMass/Hhat)*points[NewScreen]^[xpos,ypos,zpos].PsiVect.z);
-                   y := -((ElectronMass/Hhat)*points[NewScreen]^[xpos,ypos,zpos].PsiVect.y);
-                   z := -((ElectronMass/Hhat)*points[NewScreen]^[xpos,ypos,zpos].PsiVect.x);
+                   if proton then begin
+                     x := -(-(ProtonMass/Hhat)*points[NewScreen]^[xpos,ypos,zpos].PsiVect.z);
+                     y := -((ProtonMass/Hhat)*points[NewScreen]^[xpos,ypos,zpos].PsiVect.y);
+                     z := -((ProtonMass/Hhat)*points[NewScreen]^[xpos,ypos,zpos].PsiVect.x);
+                   end
+                   else begin
+                     x := -(-(ElectronMass/Hhat)*points[NewScreen]^[xpos,ypos,zpos].PsiVect.z);
+                     y := -((ElectronMass/Hhat)*points[NewScreen]^[xpos,ypos,zpos].PsiVect.y);
+                     z := -((ElectronMass/Hhat)*points[NewScreen]^[xpos,ypos,zpos].PsiVect.x);
+                   end;
                  end;
                end;
              end;
@@ -2224,9 +2310,16 @@ begin
              end
              else begin
                // dA/dt = -(Me*c/Hhat)^2*Ye
-               ElecFieldFromA.x := -sqr(ElectronMass * SpeedOfLight / Hhat)*points[NewScreen]^[xpos,ypos,zpos].PsiVect.x;
-               ElecFieldFromA.y := -sqr(ElectronMass * SpeedOfLight / Hhat)*points[NewScreen]^[xpos,ypos,zpos].PsiVect.y;
-               ElecFieldFromA.z := -sqr(ElectronMass * SpeedOfLight / Hhat)*points[NewScreen]^[xpos,ypos,zpos].PsiVect.z;
+               if proton then begin
+                 ElecFieldFromA.x := -sqr(ProtonMass * SpeedOfLight / Hhat)*points[NewScreen]^[xpos,ypos,zpos].PsiVect.x;
+                 ElecFieldFromA.y := -sqr(ProtonMass * SpeedOfLight / Hhat)*points[NewScreen]^[xpos,ypos,zpos].PsiVect.y;
+                 ElecFieldFromA.z := -sqr(ProtonMass * SpeedOfLight / Hhat)*points[NewScreen]^[xpos,ypos,zpos].PsiVect.z;
+               end
+               else begin
+                 ElecFieldFromA.x := -sqr(ElectronMass * SpeedOfLight / Hhat)*points[NewScreen]^[xpos,ypos,zpos].PsiVect.x;
+                 ElecFieldFromA.y := -sqr(ElectronMass * SpeedOfLight / Hhat)*points[NewScreen]^[xpos,ypos,zpos].PsiVect.y;
+                 ElecFieldFromA.z := -sqr(ElectronMass * SpeedOfLight / Hhat)*points[NewScreen]^[xpos,ypos,zpos].PsiVect.z;
+               end;
              end;
 
              if field_stats and (pass=1) then begin
@@ -2247,11 +2340,11 @@ begin
                if (two_particles) then begin
                  // get actual distance in metres
                  r1:=sqrt( sqr((xpos - particle1_x)*dx) + sqr(y*dy) + sqr(z*dz) );
-                 if ( r1 < ElectronComptonRadius ) then r1:=ElectronComptonRadius;   // prevent divide by zero errors
+                 if ( r1 < r_lower_limit ) then r1:=r_lower_limit;   // prevent divide by zero errors
 
                  // get actual distance in metres
                  r2:=sqrt( sqr((xpos - particle2_x)*dx) + sqr(y*dy) + sqr(z*dz) );
-                 if ( r2 < ElectronComptonRadius ) then r2:=ElectronComptonRadius;   // prevent divide by zero errors
+                 if ( r2 < r_lower_limit ) then r2:=r_lower_limit;   // prevent divide by zero errors
 
                  if (pass=1) then begin
                    actual_x:=(xpos - particle1_x)*dx;
@@ -2265,7 +2358,7 @@ begin
                else begin
                  // get actual distance in metres
                  r:=sqrt( sqr(x*dx) + sqr(y*dy) + sqr(z*dz) );
-                 if ( r < ElectronComptonRadius ) then r:=ElectronComptonRadius;   // prevent divide by zero errors
+                 if ( r < r_lower_limit ) then r:=r_lower_limit;   // prevent divide by zero errors
 
                  actual_x:=x*dx;
                end;
@@ -2273,7 +2366,10 @@ begin
                actual_y:=y*dy;
                actual_z:=z*dz;
 
-               MeC_Hhat:= (ElectronMass*SpeedOfLight/Hhat);
+               if proton then
+                 MeC_Hhat:= (ProtonMass*SpeedOfLight/Hhat)
+               else
+                 MeC_Hhat:= (ElectronMass*SpeedOfLight/Hhat);
 
                // Get the Psi (Y) vector
                vect := points[NewScreen]^[xpos,ypos,zpos].PsiVect;
@@ -2340,11 +2436,11 @@ begin
              if (two_particles) then begin
                // get actual distance in metres
                r1:=sqrt( sqr((xpos - particle1_x)*dx) + sqr(y*dy) + sqr(z*dz) );
-               if ( r1 < ElectronComptonRadius ) then r1:=ElectronComptonRadius;   // prevent divide by zero errors
+               if ( r1 < r_lower_limit ) then r1:=r_lower_limit;   // prevent divide by zero errors
 
                // get actual distance in metres
                r2:=sqrt( sqr((xpos - particle2_x)*dx) + sqr(y*dy) + sqr(z*dz) );
-               if ( r2 < ElectronComptonRadius ) then r2:=ElectronComptonRadius;   // prevent divide by zero errors
+               if ( r2 < r_lower_limit ) then r2:=r_lower_limit;   // prevent divide by zero errors
 
                if (pass=1) then begin
                  actual_x:=(xpos - particle1_x)*dx;
@@ -2358,7 +2454,7 @@ begin
              else begin
                // get actual distance in metres
                r:=sqrt( sqr(x*dx) + sqr(y*dy) + sqr(z*dz) );
-               if ( r < ElectronComptonRadius ) then r:=ElectronComptonRadius;   // prevent divide by zero errors
+               if ( r < r_lower_limit ) then r:=r_lower_limit;   // prevent divide by zero errors
 
                actual_x:=x*dx;
              end;
@@ -2389,16 +2485,32 @@ begin
                    //      (m/(Hhat*r^2))*Y_y*z - (m^2c/(r*Hhat^2)*Y_x*z,
                    //      -(m/(Hhat*r^2))*Y_x*x - (m^2c/(r*Hhat^2))*Y_y*x - (m/(Hhat*r^2))*Y_y*y + (m^2c/(r*Hhat^2)*Y_x*y]
                    if ( ViewTop ) then begin
-                     x:=(ElectronMass/(Hhat*sqr(r)))*vect.x*actual_z + (sqr(ElectronMass)*SpeedOfLight/(r*sqr(Hhat)))*vect.y*actual_z;
-                     y:=(ElectronMass/(Hhat*sqr(r)))*vect.y*actual_z - (sqr(ElectronMass)*SpeedOfLight/(r*sqr(Hhat)))*vect.x*actual_z;
-                     z:=-(-(ElectronMass/(Hhat*sqr(r)))*vect.x*actual_x - (sqr(ElectronMass)*SpeedOfLight/(r*sqr(Hhat)))*vect.y*actual_x -
-                          (ElectronMass/(Hhat*sqr(r)))*vect.y*actual_y + (sqr(ElectronMass)*SpeedOfLight/(r*sqr(Hhat)))*vect.x*actual_y);
+                     if proton then begin
+                       x:=(ProtonMass/(Hhat*sqr(r)))*vect.x*actual_z + (sqr(ProtonMass)*SpeedOfLight/(r*sqr(Hhat)))*vect.y*actual_z;
+                       y:=(ProtonMass/(Hhat*sqr(r)))*vect.y*actual_z - (sqr(ProtonMass)*SpeedOfLight/(r*sqr(Hhat)))*vect.x*actual_z;
+                       z:=-(-(ProtonMass/(Hhat*sqr(r)))*vect.x*actual_x - (sqr(ProtonMass)*SpeedOfLight/(r*sqr(Hhat)))*vect.y*actual_x -
+                            (ProtonMass/(Hhat*sqr(r)))*vect.y*actual_y + (sqr(ProtonMass)*SpeedOfLight/(r*sqr(Hhat)))*vect.x*actual_y);
+                     end
+                     else begin
+                       x:=(ElectronMass/(Hhat*sqr(r)))*vect.x*actual_z + (sqr(ElectronMass)*SpeedOfLight/(r*sqr(Hhat)))*vect.y*actual_z;
+                       y:=(ElectronMass/(Hhat*sqr(r)))*vect.y*actual_z - (sqr(ElectronMass)*SpeedOfLight/(r*sqr(Hhat)))*vect.x*actual_z;
+                       z:=-(-(ElectronMass/(Hhat*sqr(r)))*vect.x*actual_x - (sqr(ElectronMass)*SpeedOfLight/(r*sqr(Hhat)))*vect.y*actual_x -
+                            (ElectronMass/(Hhat*sqr(r)))*vect.y*actual_y + (sqr(ElectronMass)*SpeedOfLight/(r*sqr(Hhat)))*vect.x*actual_y);
+                     end;
                    end
                    else begin // z and y swapped
-                     x:=(ElectronMass/(Hhat*sqr(r)))*vect.x*actual_y + (sqr(ElectronMass)*SpeedOfLight/(r*sqr(Hhat)))*vect.z*actual_y;
-                     z:=(ElectronMass/(Hhat*sqr(r)))*vect.z*actual_y - (sqr(ElectronMass)*SpeedOfLight/(r*sqr(Hhat)))*vect.x*actual_y;
-                     y:=-(-(ElectronMass/(Hhat*sqr(r)))*vect.x*actual_x - (sqr(ElectronMass)*SpeedOfLight/(r*sqr(Hhat)))*vect.z*actual_x -
-                          (ElectronMass/(Hhat*sqr(r)))*vect.z*actual_z + (sqr(ElectronMass)*SpeedOfLight/(r*sqr(Hhat)))*vect.x*actual_z);
+                     if proton then begin
+                       x:=(ProtonMass/(Hhat*sqr(r)))*vect.x*actual_y + (sqr(ProtonMass)*SpeedOfLight/(r*sqr(Hhat)))*vect.z*actual_y;
+                       z:=(ProtonMass/(Hhat*sqr(r)))*vect.z*actual_y - (sqr(ProtonMass)*SpeedOfLight/(r*sqr(Hhat)))*vect.x*actual_y;
+                       y:=-(-(ProtonMass/(Hhat*sqr(r)))*vect.x*actual_x - (sqr(ProtonMass)*SpeedOfLight/(r*sqr(Hhat)))*vect.z*actual_x -
+                            (ProtonMass/(Hhat*sqr(r)))*vect.z*actual_z + (sqr(ProtonMass)*SpeedOfLight/(r*sqr(Hhat)))*vect.x*actual_z);
+                     end
+                     else begin
+                       x:=(ElectronMass/(Hhat*sqr(r)))*vect.x*actual_y + (sqr(ElectronMass)*SpeedOfLight/(r*sqr(Hhat)))*vect.z*actual_y;
+                       z:=(ElectronMass/(Hhat*sqr(r)))*vect.z*actual_y - (sqr(ElectronMass)*SpeedOfLight/(r*sqr(Hhat)))*vect.x*actual_y;
+                       y:=-(-(ElectronMass/(Hhat*sqr(r)))*vect.x*actual_x - (sqr(ElectronMass)*SpeedOfLight/(r*sqr(Hhat)))*vect.z*actual_x -
+                            (ElectronMass/(Hhat*sqr(r)))*vect.z*actual_z + (sqr(ElectronMass)*SpeedOfLight/(r*sqr(Hhat)))*vect.x*actual_z);
+                     end;
                    end;
 
                    // if the second particle is a positron, we must reverse the direction of the magnetic field vector, as
@@ -2466,8 +2578,15 @@ begin
 
          PowerCorrectionFactor_E:=1;
          PowerCorrectionFactor_B:=1;
-         if (E_Energy_Tot > 0)  then PowerCorrectionFactor_E:=sqrt((EnergyFactor*ElectronMass*SpeedOfLight*SpeedOfLight)/E_Energy_Tot); // correct for model inaccuracy
-         if (B_Energy_Tot > 0)  then PowerCorrectionFactor_B:=sqrt((EnergyFactor*ElectronMass*SpeedOfLight*SpeedOfLight)/B_Energy_Tot); // correct for model inaccuracy
+
+         if proton then begin
+           if (E_Energy_Tot > 0)  then PowerCorrectionFactor_E:=sqrt((EnergyFactor*ProtonMass*SpeedOfLight*SpeedOfLight)/E_Energy_Tot); // correct for model inaccuracy
+           if (B_Energy_Tot > 0)  then PowerCorrectionFactor_B:=sqrt((EnergyFactor*ProtonMass*SpeedOfLight*SpeedOfLight)/B_Energy_Tot); // correct for model inaccuracy
+         end
+         else begin
+           if (E_Energy_Tot > 0)  then PowerCorrectionFactor_E:=sqrt((EnergyFactor*ElectronMass*SpeedOfLight*SpeedOfLight)/E_Energy_Tot); // correct for model inaccuracy
+           if (B_Energy_Tot > 0)  then PowerCorrectionFactor_B:=sqrt((EnergyFactor*ElectronMass*SpeedOfLight*SpeedOfLight)/B_Energy_Tot); // correct for model inaccuracy
+         end;
 
          for xpos:=0 to GridWidth-1 do begin {scan grid's x coords}
            Application.ProcessMessages;
@@ -2891,8 +3010,14 @@ begin
     // a = 2.8106436739698451704657505254331e-6 / 9.1093835611e-31 = 3.0854378401324523962093223812502e24
     //
 
-    ExpectedAccel := sqr(ElectronCharge)/sqr(ActualWidth*(p1_p2_diff/GridWidth));
-    ExpectedAccel := ExpectedAccel * Ek/ElectronMass;
+    if proton then begin
+      ExpectedAccel := sqr(ProtonCharge)/sqr(ActualWidth*(p1_p2_diff/GridWidth));
+      ExpectedAccel := ExpectedAccel * Ek/ProtonMass;
+    end
+    else begin
+      ExpectedAccel := sqr(ElectronCharge)/sqr(ActualWidth*(p1_p2_diff/GridWidth));
+      ExpectedAccel := ExpectedAccel * Ek/ElectronMass;
+    end;
 
     // set the sign for the acceleration based on the particles being modeled
     if not (electron and positron) then ExpectedAccel := -ExpectedAccel;
@@ -3968,6 +4093,17 @@ procedure TForm1.Start23Click(Sender: TObject);
 {The 10th Start option has been selected}
 begin
   New_StartOption:=23;
+  if StartOption<>New_StartOption then begin
+    DoUpdate:=true;
+    Restart:=true;
+    ProfileCancel();
+  end;
+end;
+
+procedure TForm1.Start24Click(Sender: TObject);
+{The 10th Start option has been selected}
+begin
+  New_StartOption:=24;
   if StartOption<>New_StartOption then begin
     DoUpdate:=true;
     Restart:=true;
