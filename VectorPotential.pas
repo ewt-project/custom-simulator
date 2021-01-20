@@ -306,6 +306,7 @@ type            {Type declaration for a vector resolved into x,y & z components}
     ProgressBar1: TProgressBar;
     Percent_c: TLabel;
     Start24: TRadioButton;
+    Start25: TRadioButton;
     procedure FormCreate(Sender: TObject);
     procedure Start1Click(Sender: TObject);
     procedure Start2Click(Sender: TObject);
@@ -344,6 +345,7 @@ type            {Type declaration for a vector resolved into x,y & z components}
     procedure Start22Click(Sender: TObject);
     procedure Start23Click(Sender: TObject);
     procedure Start24Click(Sender: TObject);
+    procedure Start25Click(Sender: TObject);
     procedure TimeFreezeClick(Sender: TObject);
     procedure ZPlaneChange(Sender: TObject);
     procedure DisplayLevelChange(Sender: TObject);
@@ -530,7 +532,7 @@ const
                             (1,1,0),
                             (0,0,0)));
 
-  StartOptionCaptions : array[1..24] of String = (
+  StartOptionCaptions : array[1..25] of String = (
                                   ('1: e'),
                                   ('2: p'),
                                   ('3: ee^^'),
@@ -554,7 +556,8 @@ const
                                   ('21: e OUT'),
                                   ('22: e IN'),
                                   ('23: e BOTH'),
-                                  ('24: Proton')
+                                  ('24: Proton'),
+                                  ('25: Neutron')
                                   );
 const
 
@@ -579,6 +582,7 @@ const
   ElectronCharge=-(1.60217662E-19);
   PositronCharge=(1.60217662E-19);
   ProtonCharge=(1.60217662E-19);
+  NeutronCharge=(0);
 
   ElectronMass=9.1093835611E-31;
   ElectronComptonWavelength=2.4263102175E-12;
@@ -589,6 +593,11 @@ const
   ProtonComptonWavelength=1.32140985539E-15;
   ProtonComptonRadius=ProtonComptonWavelength/(2*Pi);
   ProtonClassicalRadius=alpha*ProtonComptonRadius;
+
+  NeutronMass=1.6749274980495E-27;
+  NeutronComptonWavelength=2.100194155212E-16;
+  NeutronComptonRadius=NeutronComptonWavelength/(2*Pi);
+  NeutronClassicalRadius=alpha*ProtonComptonRadius;
 
   ElectronNeutrinoMass=1.17726E-35;
 
@@ -862,6 +871,7 @@ begin
   Start22.Checked:=false;
   Start23.Checked:=false;
   Start24.Checked:=false;
+  Start25.Checked:=false;
 
   case StartOption of
    1: begin  // if electron being modelled
@@ -958,6 +968,10 @@ begin
 
    24: begin  // if proton wave being modelled
       Start24.Checked:=true;
+      end;
+
+   25: begin  // if neutron wave being modelled
+      Start25.Checked:=true;
       end;
   end;
 
@@ -1131,9 +1145,11 @@ begin
 end;
 
 procedure TForm1.RecalcFields(scr:smallint);
+label
+  NeutronNext;
 var
   r,r1,r2,x,y,z,unit_x,unit_y,unit_z,actual_x,actual_y,actual_z,r_lower_limit : extended;
-  theta, theta1, theta2, delta, theta_const, expTheta, lnTheta : extended;
+  theta, theta1, theta2, delta, delta1, delta2, theta_const, theta_const1, theta_const2, expTheta, lnTheta : extended;
   term0, term1, term1a, term1b, term2, term2a, term2b, term3, term3a, term3b : extended;
   psi_x, psi_y, psi_z, psi_x_particle1, psi_y_particle1, psi_z_particle1, psi_x_particle2, psi_y_particle2, psi_z_particle2 : extended;
   normal_x,normal_y,normal_z,dir_x,dir_y,dir_z : extended;
@@ -1147,7 +1163,7 @@ var
   I: Integer;
   ShellThickness: Extended;
   dist: longint;
-  electron, positron, proton: boolean;
+  electron, positron, proton, neutron, two_particle_composite: boolean;
   orthogonal_particles: boolean;
   particles_end_to_end: boolean;
   particle1_spin, particle2_spin, saved_sign: integer;
@@ -1235,6 +1251,8 @@ begin
   B_Energy_Sum:=0;
 
   proton:=false;
+  neutron:=false;
+  two_particle_composite:=false;
   r_lower_limit:=ElectronComptonRadius;
 
   case StartOption of
@@ -1413,13 +1431,22 @@ begin
        two_particles:=false;
        maxpass:=1;
       end;
+
+   25: begin  // if neutron being modeled
+       electron:=false;
+       positron:=false;
+       neutron:=true;
+       r_lower_limit:=NeutronComptonRadius;
+       two_particle_composite:=true;
+       maxpass:=1;
+      end;
   end;
 
   if (IterationCount = 0) then begin
-    if proton then begin
-      if (strtofloat(ActualGridWidth.Text) > 1.00E-13) then begin
+    if (proton or neutron) then begin
+      if (strtofloat(ActualGridWidth.Text) > 2.00E-11) then begin
         ActualGridWidth.Text:=FloatToStrf(1.5E-14,ffExponent,5,2); {display actual size in metres that grid represents}
-        RateOfTime.Position:=3;
+        if proton then RateOfTime.Position:=3;
         ProcSetGridGlobals(Self);
         DoUpdate:=true;
         Restart:=true;
@@ -1553,6 +1580,18 @@ begin
          // ( theta_const could be, equivalently : - c^2/SpinConstant )
          theta_const:=( -ProtonMass * sqr(SpeedOfLight) ) / Hhat;
        end
+       else if neutron then begin
+         SpinConstant:=( Hhat / NeutronMass ); // Metres^2/(Radians*Second)
+         delta1 := ( abs(ProtonCharge) * Hhat ) / ( 2 * Pi * ProtonMass * SpeedOfLight * Permittivity );
+         delta2 := ( abs(ElectronCharge) * Hhat ) / ( 2 * Pi * ElectronMass * SpeedOfLight * Permittivity );
+         if in_out_waves then delta:=delta/2; // each IN/OUT wave is only half the proton energy (wave amplitude)
+
+         // theta_const is in Radians/Second ( i.e. the same as solving E = hf for f, where E=mc^2, and h=2*Pi*Hhat,
+         // then converting f to angular frequency w, via w = 2*Pi*f )
+         // ( theta_const could be, equivalently : - c^2/SpinConstant )
+         theta_const1:=( -ProtonMass * sqr(SpeedOfLight) ) / Hhat;
+         theta_const2:=( -ElectronMass * sqr(SpeedOfLight) ) / Hhat;
+       end
        else begin
          SpinConstant:=( Hhat / ElectronMass ); // Metres^2/(Radians*Second)
          delta := ( abs(ElectronCharge) * Hhat ) / ( 2 * Pi * ElectronMass * SpeedOfLight * Permittivity );
@@ -1613,6 +1652,10 @@ begin
 
        if proton then
          Etotal:=(Permeability*SpeedOfLight*SpeedOfLight + 1/Permittivity)*sqr(ProtonCharge)/(8*Pi*ProtonClassicalRadius)
+       else if neutron then begin
+         Etotal:=(Permeability*SpeedOfLight*SpeedOfLight + 1/Permittivity)*sqr(ProtonCharge)/(8*Pi*ProtonClassicalRadius);
+         Etotal:=Etotal + (Permeability*SpeedOfLight*SpeedOfLight + 1/Permittivity)*sqr(ElectronCharge)/(8*Pi*ElectronClassicalRadius);
+       end
        else
          Etotal:=(Permeability*SpeedOfLight*SpeedOfLight + 1/Permittivity)*sqr(ElectronCharge)/(8*Pi*ElectronClassicalRadius);
 
@@ -1689,7 +1732,7 @@ begin
              y:= ypos - midy;
              z:= zpos - midz;
 
-             if (two_particles) then begin
+             if two_particles then begin
                // get actual distance in metres
                r1:=sqrt( sqr((xpos - particle1_x)*dx) + sqr(y*dy) + sqr(z*dz) );
                if ( r1 < r_lower_limit ) then r1:=r_lower_limit;   // prevent divide by zero errors
@@ -1933,10 +1976,17 @@ begin
                    theta:=theta_const*(Time + r/(SpeedOfLight + x_velocity));
                    term1:=sign(ProtonCharge) * delta/r_gamma;
                end;
+
+               25: begin  // if neutron being modeled
+                   theta1:=theta_const1*(Time + r/(SpeedOfLight + x_velocity));
+                   theta2:=theta_const2*(Time - r/(SpeedOfLight + x_velocity));
+                   term1a:=sign(ProtonCharge) * delta1/r_gamma;
+                   term1b:=sign(ElectronCharge) * delta2/r_gamma;
+               end;
              end;
 
              if not sine_wave_sum then begin
-               if two_particles then begin
+               if (two_particles or two_particle_composite) then begin
                  SinCos(theta1, term3a, term2a);
                  SinCos(theta2, term3b, term2b);
 
@@ -1958,7 +2008,7 @@ begin
                end;
              end;
 
-             if not two_particles then begin
+             if not (two_particles or two_particle_composite) then begin
                psi_x := term1 * term2;
                psi_y := term1 * term3;
                psi_z := 0;
@@ -1966,7 +2016,7 @@ begin
 
              // Assign values to x, y, z coordinates, depending on view from the top or side.
              with points[NewScreen]^[xpos,ypos,zpos].PsiVect do begin
-               if two_particles then begin
+               if (two_particles or two_particle_composite) then begin
                  if ( ViewTop ) then begin
                    if orthogonal_particles then begin
                      // x1' = x1
@@ -2083,7 +2133,7 @@ begin
                  y:= ypos - midy;
                  z:= zpos - midz;
 
-                 if (two_particles) then begin
+                 if two_particles then begin
                    // get actual distance in metres
                    r1:=sqrt( sqr((xpos - particle1_x)*dx) + sqr(y*dy) + sqr(z*dz) );
                    if ( r1 < r_lower_limit ) then r1:=r_lower_limit;   // prevent divide by zero errors
@@ -2100,7 +2150,9 @@ begin
                      else if positron then
                        ElectricPotential:=ElectricPotential + abs(particle1_spin)*PositronCharge/(4*Pi*r1*Permittivity)
                      else if proton then
-                       ElectricPotential:=ElectricPotential + abs(particle1_spin)*ProtonCharge/(4*Pi*r1*Permittivity);
+                       ElectricPotential:=ElectricPotential + abs(particle1_spin)*ProtonCharge/(4*Pi*r1*Permittivity)
+                     else if neutron then
+                       ElectricPotential:=ElectricPotential + abs(particle1_spin)*NeutronCharge/(4*Pi*r1*Permittivity);
                    end;
 
                    if (pass=2) or (pass=3) then begin
@@ -2109,7 +2161,9 @@ begin
                      else if electron then
                        ElectricPotential:=ElectricPotential + abs(particle2_spin)*ElectronCharge/(4*Pi*r2*Permittivity)
                      else if proton then
-                       ElectricPotential:=ElectricPotential + abs(particle2_spin)*ProtonCharge/(4*Pi*r1*Permittivity);
+                       ElectricPotential:=ElectricPotential + abs(particle2_spin)*ProtonCharge/(4*Pi*r1*Permittivity)
+                     else if neutron then
+                       ElectricPotential:=ElectricPotential + abs(particle2_spin)*NeutronCharge/(4*Pi*r1*Permittivity);
                    end;
                  end
                  else begin
@@ -2122,7 +2176,9 @@ begin
                    else if positron then
                      ElectricPotential:=PositronCharge/(4*Pi*r*Permittivity)
                    else if proton then
-                     ElectricPotential:=ProtonCharge/(4*Pi*r*Permittivity);
+                     ElectricPotential:=ProtonCharge/(4*Pi*r*Permittivity)
+                   else if proton then
+                     ElectricPotential:=NeutronCharge/(4*Pi*r*Permittivity);
                  end;
                end
                else begin
@@ -2266,6 +2322,11 @@ begin
                      y := -((ProtonMass/Hhat)*points[NewScreen]^[xpos,ypos,zpos].PsiVect.x);
                      z := -((ProtonMass/Hhat)*points[NewScreen]^[xpos,ypos,zpos].PsiVect.z);
                    end
+                   else if neutron then begin
+                     x := -(-(NeutronMass/Hhat)*points[NewScreen]^[xpos,ypos,zpos].PsiVect.y);
+                     y := -((NeutronMass/Hhat)*points[NewScreen]^[xpos,ypos,zpos].PsiVect.x);
+                     z := -((NeutronMass/Hhat)*points[NewScreen]^[xpos,ypos,zpos].PsiVect.z);
+                   end
                    else begin
                      x := -(-(ElectronMass/Hhat)*points[NewScreen]^[xpos,ypos,zpos].PsiVect.y);
                      y := -((ElectronMass/Hhat)*points[NewScreen]^[xpos,ypos,zpos].PsiVect.x);
@@ -2277,6 +2338,14 @@ begin
                      x := -(-(ProtonMass/Hhat)*points[NewScreen]^[xpos,ypos,zpos].PsiVect.z);
                      y := -((ProtonMass/Hhat)*points[NewScreen]^[xpos,ypos,zpos].PsiVect.y);
                      z := -((ProtonMass/Hhat)*points[NewScreen]^[xpos,ypos,zpos].PsiVect.x);
+                   end
+                   else if neutron then begin
+                     x := -(-(ProtonMass/Hhat)*points[NewScreen]^[xpos,ypos,zpos].PsiVect.z);
+                     y := -((ProtonMass/Hhat)*points[NewScreen]^[xpos,ypos,zpos].PsiVect.y);
+                     z := -((ProtonMass/Hhat)*points[NewScreen]^[xpos,ypos,zpos].PsiVect.x);
+                     x := x -(-(ElectronMass/Hhat)*points[NewScreen]^[xpos,ypos,zpos].PsiVect.z);
+                     y := y -((ElectronMass/Hhat)*points[NewScreen]^[xpos,ypos,zpos].PsiVect.y);
+                     z := z -((ElectronMass/Hhat)*points[NewScreen]^[xpos,ypos,zpos].PsiVect.x);
                    end
                    else begin
                      x := -(-(ElectronMass/Hhat)*points[NewScreen]^[xpos,ypos,zpos].PsiVect.z);
@@ -2291,7 +2360,7 @@ begin
 
 //             PrevVectorPotential:= points[scr]^[xpos,ypos,zpos].VectorPotential;
 
-             if (two_particles) then begin
+             if two_particles then begin
                if (pass=1) then begin
                  PrevVectorPotential:=particle1_A[xpos,ypos,zpos];
                end
@@ -2315,6 +2384,14 @@ begin
                  ElecFieldFromA.y := -sqr(ProtonMass * SpeedOfLight / Hhat)*points[NewScreen]^[xpos,ypos,zpos].PsiVect.y;
                  ElecFieldFromA.z := -sqr(ProtonMass * SpeedOfLight / Hhat)*points[NewScreen]^[xpos,ypos,zpos].PsiVect.z;
                end
+               else if neutron then with ElecFieldFromA do begin
+                 x := -sqr(ProtonMass * SpeedOfLight / Hhat)*points[NewScreen]^[xpos,ypos,zpos].PsiVect.x;
+                 y := -sqr(ProtonMass * SpeedOfLight / Hhat)*points[NewScreen]^[xpos,ypos,zpos].PsiVect.y;
+                 z := -sqr(ProtonMass * SpeedOfLight / Hhat)*points[NewScreen]^[xpos,ypos,zpos].PsiVect.z;
+                 x := x -sqr(ElectronMass * SpeedOfLight / Hhat)*points[NewScreen]^[xpos,ypos,zpos].PsiVect.x;
+                 y := y -sqr(ElectronMass * SpeedOfLight / Hhat)*points[NewScreen]^[xpos,ypos,zpos].PsiVect.y;
+                 z := z -sqr(ElectronMass * SpeedOfLight / Hhat)*points[NewScreen]^[xpos,ypos,zpos].PsiVect.z;
+               end
                else begin
                  ElecFieldFromA.x := -sqr(ElectronMass * SpeedOfLight / Hhat)*points[NewScreen]^[xpos,ypos,zpos].PsiVect.x;
                  ElecFieldFromA.y := -sqr(ElectronMass * SpeedOfLight / Hhat)*points[NewScreen]^[xpos,ypos,zpos].PsiVect.y;
@@ -2337,7 +2414,7 @@ begin
              end;
 
              if E_useFormula and not smoothing then begin
-               if (two_particles) then begin
+               if two_particles then begin
                  // get actual distance in metres
                  r1:=sqrt( sqr((xpos - particle1_x)*dx) + sqr(y*dy) + sqr(z*dz) );
                  if ( r1 < r_lower_limit ) then r1:=r_lower_limit;   // prevent divide by zero errors
@@ -2366,14 +2443,14 @@ begin
                actual_y:=y*dy;
                actual_z:=z*dz;
 
-               if proton then
+               if (proton or neutron) then
                  MeC_Hhat:= (ProtonMass*SpeedOfLight/Hhat)
                else
                  MeC_Hhat:= (ElectronMass*SpeedOfLight/Hhat);
 
                // Get the Psi (Y) vector
                vect := points[NewScreen]^[xpos,ypos,zpos].PsiVect;
-
+NeutronNext:
                // From Maple calculations:
                //
                with points[NewScreen]^[xpos,ypos,zpos].Electric do begin
@@ -2410,6 +2487,19 @@ begin
                       MeC_Hhat*(3*vect.x*r/Power(sqr(r), 2))*actual_z*actual_y - sqr(MeC_Hhat)*(vect.z*r/Power(sqr(r),3/2))*actual_z*actual_y;
                  end;
                end;
+
+               if neutron then begin
+                 if (MeC_Hhat = (ProtonMass*SpeedOfLight/Hhat)) then begin
+                   vect2:=points[NewScreen]^[xpos,ypos,zpos].Electric;
+                   MeC_Hhat:= (ElectronMass*SpeedOfLight/Hhat);
+                   goto NeutronNext;
+                 end
+                 else with points[NewScreen]^[xpos,ypos,zpos].Electric do begin
+                   x := vect2.x + x;
+                   y := vect2.y + y;
+                   z := vect2.z + z;
+                 end;
+               end;
              end;
 
              if field_stats and (pass=1) then ElecField_Sum:= ElecField_Sum + VectSize(points[NewScreen]^[xpos,ypos,zpos].Electric);
@@ -2433,7 +2523,7 @@ begin
              y:= ypos - midy;
              z:= zpos - midz;
 
-             if (two_particles) then begin
+             if two_particles then begin
                // get actual distance in metres
                r1:=sqrt( sqr((xpos - particle1_x)*dx) + sqr(y*dy) + sqr(z*dz) );
                if ( r1 < r_lower_limit ) then r1:=r_lower_limit;   // prevent divide by zero errors
@@ -2491,6 +2581,16 @@ begin
                        z:=-(-(ProtonMass/(Hhat*sqr(r)))*vect.x*actual_x - (sqr(ProtonMass)*SpeedOfLight/(r*sqr(Hhat)))*vect.y*actual_x -
                             (ProtonMass/(Hhat*sqr(r)))*vect.y*actual_y + (sqr(ProtonMass)*SpeedOfLight/(r*sqr(Hhat)))*vect.x*actual_y);
                      end
+                     else if neutron then begin
+                       x:=- (ProtonMass/(Hhat*sqr(r)))*vect.x*actual_z + (sqr(ProtonMass)*SpeedOfLight/(r*sqr(Hhat)))*vect.y*actual_z;
+                       y:=- (ProtonMass/(Hhat*sqr(r)))*vect.y*actual_z - (sqr(ProtonMass)*SpeedOfLight/(r*sqr(Hhat)))*vect.x*actual_z;
+                       z:=  (-(ProtonMass/(Hhat*sqr(r)))*vect.x*actual_x - (sqr(ProtonMass)*SpeedOfLight/(r*sqr(Hhat)))*vect.y*actual_x -
+                            (ProtonMass/(Hhat*sqr(r)))*vect.y*actual_y + (sqr(ProtonMass)*SpeedOfLight/(r*sqr(Hhat)))*vect.x*actual_y);
+                       x:=x + (ElectronMass/(Hhat*sqr(r)))*vect.x*actual_z + (sqr(ElectronMass)*SpeedOfLight/(r*sqr(Hhat)))*vect.y*actual_z;
+                       y:=y + (ElectronMass/(Hhat*sqr(r)))*vect.y*actual_z - (sqr(ElectronMass)*SpeedOfLight/(r*sqr(Hhat)))*vect.x*actual_z;
+                       z:=z -(-(ElectronMass/(Hhat*sqr(r)))*vect.x*actual_x - (sqr(ElectronMass)*SpeedOfLight/(r*sqr(Hhat)))*vect.y*actual_x -
+                            (ElectronMass/(Hhat*sqr(r)))*vect.y*actual_y + (sqr(ElectronMass)*SpeedOfLight/(r*sqr(Hhat)))*vect.x*actual_y);
+                     end
                      else begin
                        x:=(ElectronMass/(Hhat*sqr(r)))*vect.x*actual_z + (sqr(ElectronMass)*SpeedOfLight/(r*sqr(Hhat)))*vect.y*actual_z;
                        y:=(ElectronMass/(Hhat*sqr(r)))*vect.y*actual_z - (sqr(ElectronMass)*SpeedOfLight/(r*sqr(Hhat)))*vect.x*actual_z;
@@ -2505,6 +2605,16 @@ begin
                        y:=-(-(ProtonMass/(Hhat*sqr(r)))*vect.x*actual_x - (sqr(ProtonMass)*SpeedOfLight/(r*sqr(Hhat)))*vect.z*actual_x -
                             (ProtonMass/(Hhat*sqr(r)))*vect.z*actual_z + (sqr(ProtonMass)*SpeedOfLight/(r*sqr(Hhat)))*vect.x*actual_z);
                      end
+                     else if neutron then begin
+                       x:=- (ProtonMass/(Hhat*sqr(r)))*vect.x*actual_y + (sqr(ProtonMass)*SpeedOfLight/(r*sqr(Hhat)))*vect.z*actual_y;
+                       z:=- (ProtonMass/(Hhat*sqr(r)))*vect.z*actual_y - (sqr(ProtonMass)*SpeedOfLight/(r*sqr(Hhat)))*vect.x*actual_y;
+                       y:=  (-(ProtonMass/(Hhat*sqr(r)))*vect.x*actual_x - (sqr(ProtonMass)*SpeedOfLight/(r*sqr(Hhat)))*vect.z*actual_x -
+                            (ProtonMass/(Hhat*sqr(r)))*vect.z*actual_z + (sqr(ProtonMass)*SpeedOfLight/(r*sqr(Hhat)))*vect.x*actual_z);
+                       x:=x + (ElectronMass/(Hhat*sqr(r)))*vect.x*actual_y + (sqr(ElectronMass)*SpeedOfLight/(r*sqr(Hhat)))*vect.z*actual_y;
+                       z:=z + (ElectronMass/(Hhat*sqr(r)))*vect.z*actual_y - (sqr(ElectronMass)*SpeedOfLight/(r*sqr(Hhat)))*vect.x*actual_y;
+                       y:=y -(-(ElectronMass/(Hhat*sqr(r)))*vect.x*actual_x - (sqr(ElectronMass)*SpeedOfLight/(r*sqr(Hhat)))*vect.z*actual_x -
+                            (ElectronMass/(Hhat*sqr(r)))*vect.z*actual_z + (sqr(ElectronMass)*SpeedOfLight/(r*sqr(Hhat)))*vect.x*actual_z);
+                     end
                      else begin
                        x:=(ElectronMass/(Hhat*sqr(r)))*vect.x*actual_y + (sqr(ElectronMass)*SpeedOfLight/(r*sqr(Hhat)))*vect.z*actual_y;
                        z:=(ElectronMass/(Hhat*sqr(r)))*vect.z*actual_y - (sqr(ElectronMass)*SpeedOfLight/(r*sqr(Hhat)))*vect.x*actual_y;
@@ -2515,7 +2625,7 @@ begin
 
                    // if the second particle is a positron, we must reverse the direction of the magnetic field vector, as
                    // the above equation is for an electron.
-                   if (pass = 2) and positron then begin
+                   if (pass = 2) and (positron or proton) then begin
                      x:=-x;
                      y:=-y;
                      z:=-z;
@@ -2583,6 +2693,10 @@ begin
            if (E_Energy_Tot > 0)  then PowerCorrectionFactor_E:=sqrt((EnergyFactor*ProtonMass*SpeedOfLight*SpeedOfLight)/E_Energy_Tot); // correct for model inaccuracy
            if (B_Energy_Tot > 0)  then PowerCorrectionFactor_B:=sqrt((EnergyFactor*ProtonMass*SpeedOfLight*SpeedOfLight)/B_Energy_Tot); // correct for model inaccuracy
          end
+         else if neutron then begin
+           if (E_Energy_Tot > 0)  then PowerCorrectionFactor_E:=sqrt((EnergyFactor*NeutronMass*SpeedOfLight*SpeedOfLight)/E_Energy_Tot); // correct for model inaccuracy
+           if (B_Energy_Tot > 0)  then PowerCorrectionFactor_B:=sqrt((EnergyFactor*NeutronMass*SpeedOfLight*SpeedOfLight)/B_Energy_Tot); // correct for model inaccuracy
+         end
          else begin
            if (E_Energy_Tot > 0)  then PowerCorrectionFactor_E:=sqrt((EnergyFactor*ElectronMass*SpeedOfLight*SpeedOfLight)/E_Energy_Tot); // correct for model inaccuracy
            if (B_Energy_Tot > 0)  then PowerCorrectionFactor_B:=sqrt((EnergyFactor*ElectronMass*SpeedOfLight*SpeedOfLight)/B_Energy_Tot); // correct for model inaccuracy
@@ -2607,7 +2721,7 @@ begin
                  z:=z*PowerCorrectionFactor_B;
                end;
 
-               if (two_particles) then begin
+               if two_particles then begin
                  if (pass=1) then begin
                    particle1_A[xpos,ypos,zpos]:=points[NewScreen]^[xpos,ypos,zpos].VectorPotential;
                    particle1_E[xpos,ypos,zpos]:=points[NewScreen]^[xpos,ypos,zpos].Electric;
@@ -2646,7 +2760,7 @@ begin
 		          ChargeDensity:=-Permittivity*VectDiv(VectGrp);
 		        end;
 
-		        if (two_particles) then begin
+		        if two_particles then begin
 		          if (pass=1) then begin
                 if not EnergyCorrection then begin
 			            particle1_A[xpos,ypos,zpos]:=points[NewScreen]^[xpos,ypos,zpos].VectorPotential;
@@ -2677,7 +2791,7 @@ begin
   progress:=progress + 2;
   update_progress_bar(progress);
 
-  if (two_particles) then begin
+  if two_particles then begin
     c1:=0;
     c2:=0;
     c3:=0;
@@ -3012,6 +3126,10 @@ begin
 
     if proton then begin
       ExpectedAccel := sqr(ProtonCharge)/sqr(ActualWidth*(p1_p2_diff/GridWidth));
+      ExpectedAccel := ExpectedAccel * Ek/ProtonMass;
+    end
+    else if neutron then begin
+      ExpectedAccel := sqr(ProtonCharge + ElectronCharge)/sqr(ActualWidth*(p1_p2_diff/GridWidth));
       ExpectedAccel := ExpectedAccel * Ek/ProtonMass;
     end
     else begin
@@ -4104,6 +4222,17 @@ procedure TForm1.Start24Click(Sender: TObject);
 {The 10th Start option has been selected}
 begin
   New_StartOption:=24;
+  if StartOption<>New_StartOption then begin
+    DoUpdate:=true;
+    Restart:=true;
+    ProfileCancel();
+  end;
+end;
+
+procedure TForm1.Start25Click(Sender: TObject);
+{The 10th Start option has been selected}
+begin
+  New_StartOption:=25;
   if StartOption<>New_StartOption then begin
     DoUpdate:=true;
     Restart:=true;
