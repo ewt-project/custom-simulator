@@ -720,7 +720,7 @@ var
   arrow_step: extended;
   New_ArrowScaleFactor: integer;
   ArrowScaleFactor: extended;
-  Restart: boolean;
+  Restart, StartOptionChanged: boolean;
   ViewTop: boolean;
   AllFields: boolean;
   smoothing: boolean;
@@ -772,6 +772,7 @@ begin
 
     two_particles:=false;
     Restart:=true;
+    StartOptionChanged:=true;
     FreezeTime:=false;
     New_FreezeTime:=false;
     StartOption:=1;                {default to start config 3}
@@ -1442,17 +1443,15 @@ begin
       end;
   end;
 
-  if (IterationCount = 0) then begin
+  if StartOptionChanged then begin
     if (proton or neutron) then begin
-      if (strtofloat(ActualGridWidth.Text) > 2.00E-11) then begin
-        ActualGridWidth.Text:=FloatToStrf(1.5E-14,ffExponent,5,2); {display actual size in metres that grid represents}
-        if proton then RateOfTime.Position:=3;
-        ProcSetGridGlobals(Self);
-        DoUpdate:=true;
-        Restart:=true;
-      end;
+      ActualGridWidth.Text:=FloatToStrf(1.5E-14,ffExponent,5,2); {display actual size in metres that grid represents}
+      if proton then RateOfTime.Position:=3;
+      ProcSetGridGlobals(Self);
+      DoUpdate:=true;
+      Restart:=true;
     end
-    else if (strtofloat(ActualGridWidth.Text) < 1.00E-13) then begin
+    else begin
       ActualGridWidth.Text:=FloatToStrf(3.0E-11,ffExponent,5,2); {display actual size in metres that grid represents}
       RateOfTime.Position:=4000;
       ProcSetGridGlobals(Self);
@@ -3442,6 +3441,9 @@ begin
     Initialise(False);
     justRestored := false;
   end;
+
+  if (New_StartOption<>StartOption) then StartOptionChanged:=true
+  else StartOptionChanged:=false;
 
   if (New_StartOption<>StartOption) or Restart then begin  {Restart with new start option}
     Restart:=false;
