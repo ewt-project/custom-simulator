@@ -307,6 +307,7 @@ type            {Type declaration for a vector resolved into x,y & z components}
     Percent_c: TLabel;
     Start24: TRadioButton;
     Start25: TRadioButton;
+    Start26: TRadioButton;
     procedure FormCreate(Sender: TObject);
     procedure Start1Click(Sender: TObject);
     procedure Start2Click(Sender: TObject);
@@ -346,6 +347,7 @@ type            {Type declaration for a vector resolved into x,y & z components}
     procedure Start23Click(Sender: TObject);
     procedure Start24Click(Sender: TObject);
     procedure Start25Click(Sender: TObject);
+    procedure Start26Click(Sender: TObject);
     procedure TimeFreezeClick(Sender: TObject);
     procedure ZPlaneChange(Sender: TObject);
     procedure DisplayLevelChange(Sender: TObject);
@@ -561,12 +563,6 @@ const
                                   );
 const
 
-  // TRUE or FALSE for neutrino
-//  neutrino=TRUE;
-//  PPM=1E8; {Points Per Metre}
-
-  neutrino=FALSE;
-
   Default_GridWidth=GRID_SIZE;     {Default Number of Pixels wide}
   Default_GridHeight=GRID_SIZE;    {Default Number of Pixels high}
   Default_GridDepth=GRID_SIZE;     {Default Number of Pixels Deep}
@@ -585,21 +581,24 @@ const
   NeutronCharge=(0);
 
   ElectronMass=9.1093835611E-31;
-  ElectronComptonWavelength=2.4263102175E-12;
+  ElectronComptonWavelength=2*Pi*Hhat/(ElectronMass*SpeedOfLight);
   ElectronComptonRadius=ElectronComptonWavelength/(2*Pi);
   ElectronClassicalRadius=alpha*ElectronComptonRadius;
 
   ProtonMass=1.6726219E-27;
-  ProtonComptonWavelength=1.32140985539E-15;
+  ProtonComptonWavelength=2*Pi*Hhat/(ProtonMass*SpeedOfLight);
   ProtonComptonRadius=ProtonComptonWavelength/(2*Pi);
   ProtonClassicalRadius=alpha*ProtonComptonRadius;
 
   NeutronMass=1.6749274980495E-27;
-  NeutronComptonWavelength=2.100194155212E-16;
+  NeutronComptonWavelength=2*Pi*Hhat/(NeutronMass*SpeedOfLight);
   NeutronComptonRadius=NeutronComptonWavelength/(2*Pi);
   NeutronClassicalRadius=alpha*ProtonComptonRadius;
 
   ElectronNeutrinoMass=1.17726E-35;
+  ElectronNeutrinoComptonWavelength=2*Pi*Hhat/(ElectronNeutrinoMass*SpeedOfLight);
+  ElectronNeutrinoComptonRadius=ElectronNeutrinoComptonWavelength/(2*Pi);
+  ElectronNeutrinoClassicalRadius=alpha*ElectronNeutrinoComptonRadius;
 
   Max_E=0;  {Max value of Electric field to allow per pixel - Volts/m (0 value disables it)}
   Max_B=0;  {Max value of Magnetic field to allow per pixel - Tesla (0 value disables it)}
@@ -873,6 +872,7 @@ begin
   Start23.Checked:=false;
   Start24.Checked:=false;
   Start25.Checked:=false;
+  Start26.Checked:=false;
 
   case StartOption of
    1: begin  // if electron being modelled
@@ -967,12 +967,16 @@ begin
       Start23.Checked:=true;
       end;
 
-   24: begin  // if proton wave being modelled
+   24: begin  // if proton being modelled
       Start24.Checked:=true;
       end;
 
-   25: begin  // if neutron wave being modelled
+   25: begin  // if neutron being modelled
       Start25.Checked:=true;
+      end;
+
+   26: begin  // if neutrino being modelled
+      Start26.Checked:=true;
       end;
   end;
 
@@ -1164,7 +1168,7 @@ var
   I: Integer;
   ShellThickness: Extended;
   dist: longint;
-  electron, positron, proton, neutron, two_particle_composite: boolean;
+  electron, positron, proton, neutron, neutrino, two_particle_composite: boolean;
   orthogonal_particles: boolean;
   particles_end_to_end: boolean;
   particle1_spin, particle2_spin, saved_sign: integer;
@@ -1253,6 +1257,7 @@ begin
 
   proton:=false;
   neutron:=false;
+  neutrino:=false;
   two_particle_composite:=false;
   r_lower_limit:=ElectronComptonRadius;
 
@@ -1441,12 +1446,28 @@ begin
        two_particle_composite:=true;
        maxpass:=1;
       end;
+
+   26: begin  // if neutrino being modeled
+       electron:=false;
+       positron:=false;
+       neutrino:=true;
+       r_lower_limit:=ElectronNeutrinoComptonRadius;
+       maxpass:=1;
+      end;
   end;
 
   if StartOptionChanged then begin
     if (proton or neutron) then begin
       ActualGridWidth.Text:=FloatToStrf(1.5E-14,ffExponent,5,2); {display actual size in metres that grid represents}
       if proton then RateOfTime.Position:=3;
+      ProcSetGridGlobals(Self);
+      DoUpdate:=true;
+      Restart:=true;
+    end
+    else if neutrino then begin
+      ActualGridWidth.Text:=FloatToStrf(3.0E-5,ffExponent,5,2); {display actual size in metres that grid represents}
+      RateOfTime.Position:=4000;
+      New_RateOfTime:=RateOfTime.Position * 20000;
       ProcSetGridGlobals(Self);
       DoUpdate:=true;
       Restart:=true;
@@ -1562,7 +1583,7 @@ begin
 
        if neutrino then begin
          SpinConstant:=( Hhat / ElectronNeutrinoMass ); // Metres^2/(Radians*Second)
-         delta := 1;
+         delta := ( 1E-20 * Hhat ) / ( 2 * Pi * ElectronNeutrinoMass * SpeedOfLight * Permittivity );
 
          // theta_const is in Radians/Second ( i.e. the same as solving E = hf for f, where E=mc^2, and h=2*Pi*Hhat,
          // then converting f to angular frequency w, via w = 2*Pi*f )
@@ -1649,7 +1670,9 @@ begin
          end;
        end;
 
-       if proton then
+       if neutrino then
+         Etotal:=ElectronNeutrinoMass*sqr(SpeedOfLight)
+       else if proton then
          Etotal:=(Permeability*SpeedOfLight*SpeedOfLight + 1/Permittivity)*sqr(ProtonCharge)/(8*Pi*ProtonClassicalRadius)
        else if neutron then begin
          Etotal:=(Permeability*SpeedOfLight*SpeedOfLight + 1/Permittivity)*sqr(ProtonCharge)/(8*Pi*ProtonClassicalRadius);
@@ -1981,6 +2004,11 @@ begin
                    theta2:=theta_const2*(Time - r/(SpeedOfLight + x_velocity));
                    term1a:=sign(ProtonCharge) * delta1/r_gamma;
                    term1b:=sign(ElectronCharge) * delta2/r_gamma;
+               end;
+
+               26: begin  // if electron neutrino being modeled
+                   theta:=theta_const*Time;
+                   term1:=delta/r_gamma;
                end;
              end;
 
@@ -2316,7 +2344,12 @@ begin
 
                  // A = - (1/c^2)*dYe/dt = -i*(Me/Hhat)*Ye
                  if ( ViewTop ) then begin
-                   if proton then begin
+                   if neutrino then begin
+                     x := -(-(ElectronNeutrinoMass/Hhat)*points[NewScreen]^[xpos,ypos,zpos].PsiVect.y);
+                     y := -((ElectronNeutrinoMass/Hhat)*points[NewScreen]^[xpos,ypos,zpos].PsiVect.x);
+                     z := -((ElectronNeutrinoMass/Hhat)*points[NewScreen]^[xpos,ypos,zpos].PsiVect.z);
+                   end
+                   else if proton then begin
                      x := -(-(ProtonMass/Hhat)*points[NewScreen]^[xpos,ypos,zpos].PsiVect.y);
                      y := -((ProtonMass/Hhat)*points[NewScreen]^[xpos,ypos,zpos].PsiVect.x);
                      z := -((ProtonMass/Hhat)*points[NewScreen]^[xpos,ypos,zpos].PsiVect.z);
@@ -2333,7 +2366,12 @@ begin
                    end;
                  end
                  else begin
-                   if proton then begin
+                   if neutrino then begin
+                     x := -(-(ElectronNeutrinoMass/Hhat)*points[NewScreen]^[xpos,ypos,zpos].PsiVect.z);
+                     y := -((ElectronNeutrinoMass/Hhat)*points[NewScreen]^[xpos,ypos,zpos].PsiVect.y);
+                     z := -((ElectronNeutrinoMass/Hhat)*points[NewScreen]^[xpos,ypos,zpos].PsiVect.x);
+                   end
+                   else if proton then begin
                      x := -(-(ProtonMass/Hhat)*points[NewScreen]^[xpos,ypos,zpos].PsiVect.z);
                      y := -((ProtonMass/Hhat)*points[NewScreen]^[xpos,ypos,zpos].PsiVect.y);
                      z := -((ProtonMass/Hhat)*points[NewScreen]^[xpos,ypos,zpos].PsiVect.x);
@@ -2378,7 +2416,12 @@ begin
              end
              else begin
                // dA/dt = -(Me*c/Hhat)^2*Ye
-               if proton then begin
+               if neutrino then begin
+                 ElecFieldFromA.x := -sqr(ElectronNeutrinoMass * SpeedOfLight / Hhat)*points[NewScreen]^[xpos,ypos,zpos].PsiVect.x;
+                 ElecFieldFromA.y := -sqr(ElectronNeutrinoMass * SpeedOfLight / Hhat)*points[NewScreen]^[xpos,ypos,zpos].PsiVect.y;
+                 ElecFieldFromA.z := -sqr(ElectronNeutrinoMass * SpeedOfLight / Hhat)*points[NewScreen]^[xpos,ypos,zpos].PsiVect.z;
+               end
+               else if proton then begin
                  ElecFieldFromA.x := -sqr(ProtonMass * SpeedOfLight / Hhat)*points[NewScreen]^[xpos,ypos,zpos].PsiVect.x;
                  ElecFieldFromA.y := -sqr(ProtonMass * SpeedOfLight / Hhat)*points[NewScreen]^[xpos,ypos,zpos].PsiVect.y;
                  ElecFieldFromA.z := -sqr(ProtonMass * SpeedOfLight / Hhat)*points[NewScreen]^[xpos,ypos,zpos].PsiVect.z;
@@ -2574,7 +2617,13 @@ NeutronNext:
                    //      (m/(Hhat*r^2))*Y_y*z - (m^2c/(r*Hhat^2)*Y_x*z,
                    //      -(m/(Hhat*r^2))*Y_x*x - (m^2c/(r*Hhat^2))*Y_y*x - (m/(Hhat*r^2))*Y_y*y + (m^2c/(r*Hhat^2)*Y_x*y]
                    if ( ViewTop ) then begin
-                     if proton then begin
+                     if neutrino then begin
+                       x:=(ElectronNeutrinoMass/(Hhat*sqr(r)))*vect.x*actual_z + (sqr(ElectronNeutrinoMass)*SpeedOfLight/(r*sqr(Hhat)))*vect.y*actual_z;
+                       y:=(ElectronNeutrinoMass/(Hhat*sqr(r)))*vect.y*actual_z - (sqr(ElectronNeutrinoMass)*SpeedOfLight/(r*sqr(Hhat)))*vect.x*actual_z;
+                       z:=-(-(ElectronNeutrinoMass/(Hhat*sqr(r)))*vect.x*actual_x - (sqr(ElectronNeutrinoMass)*SpeedOfLight/(r*sqr(Hhat)))*vect.y*actual_x -
+                            (ElectronNeutrinoMass/(Hhat*sqr(r)))*vect.y*actual_y + (sqr(ElectronNeutrinoMass)*SpeedOfLight/(r*sqr(Hhat)))*vect.x*actual_y);
+                     end
+                     else if proton then begin
                        x:=(ProtonMass/(Hhat*sqr(r)))*vect.x*actual_z + (sqr(ProtonMass)*SpeedOfLight/(r*sqr(Hhat)))*vect.y*actual_z;
                        y:=(ProtonMass/(Hhat*sqr(r)))*vect.y*actual_z - (sqr(ProtonMass)*SpeedOfLight/(r*sqr(Hhat)))*vect.x*actual_z;
                        z:=-(-(ProtonMass/(Hhat*sqr(r)))*vect.x*actual_x - (sqr(ProtonMass)*SpeedOfLight/(r*sqr(Hhat)))*vect.y*actual_x -
@@ -2598,7 +2647,13 @@ NeutronNext:
                      end;
                    end
                    else begin // z and y swapped
-                     if proton then begin
+                     if neutrino then begin
+                       x:=(ElectronNeutrinoMass/(Hhat*sqr(r)))*vect.x*actual_y + (sqr(ElectronNeutrinoMass)*SpeedOfLight/(r*sqr(Hhat)))*vect.z*actual_y;
+                       z:=(ElectronNeutrinoMass/(Hhat*sqr(r)))*vect.z*actual_y - (sqr(ElectronNeutrinoMass)*SpeedOfLight/(r*sqr(Hhat)))*vect.x*actual_y;
+                       y:=-(-(ElectronNeutrinoMass/(Hhat*sqr(r)))*vect.x*actual_x - (sqr(ElectronNeutrinoMass)*SpeedOfLight/(r*sqr(Hhat)))*vect.z*actual_x -
+                            (ElectronNeutrinoMass/(Hhat*sqr(r)))*vect.z*actual_z + (sqr(ElectronNeutrinoMass)*SpeedOfLight/(r*sqr(Hhat)))*vect.x*actual_z);
+                     end
+                     else if proton then begin
                        x:=(ProtonMass/(Hhat*sqr(r)))*vect.x*actual_y + (sqr(ProtonMass)*SpeedOfLight/(r*sqr(Hhat)))*vect.z*actual_y;
                        z:=(ProtonMass/(Hhat*sqr(r)))*vect.z*actual_y - (sqr(ProtonMass)*SpeedOfLight/(r*sqr(Hhat)))*vect.x*actual_y;
                        y:=-(-(ProtonMass/(Hhat*sqr(r)))*vect.x*actual_x - (sqr(ProtonMass)*SpeedOfLight/(r*sqr(Hhat)))*vect.z*actual_x -
@@ -3123,12 +3178,10 @@ NeutronNext:
     // a = 2.8106436739698451704657505254331e-6 / 9.1093835611e-31 = 3.0854378401324523962093223812502e24
     //
 
+    ExpectedAccel:=0;
+
     if proton then begin
       ExpectedAccel := sqr(ProtonCharge)/sqr(ActualWidth*(p1_p2_diff/GridWidth));
-      ExpectedAccel := ExpectedAccel * Ek/ProtonMass;
-    end
-    else if neutron then begin
-      ExpectedAccel := sqr(ProtonCharge + ElectronCharge)/sqr(ActualWidth*(p1_p2_diff/GridWidth));
       ExpectedAccel := ExpectedAccel * Ek/ProtonMass;
     end
     else begin
@@ -4078,7 +4131,7 @@ begin
 end;
 
 procedure TForm1.Start11Click(Sender: TObject);
-{The 10th Start option has been selected}
+{The 11th Start option has been selected}
 begin
   New_StartOption:=11;
   if StartOption<>New_StartOption then begin
@@ -4089,7 +4142,7 @@ begin
 end;
 
 procedure TForm1.Start12Click(Sender: TObject);
-{The 10th Start option has been selected}
+{The 12th Start option has been selected}
 begin
   New_StartOption:=12;
   if StartOption<>New_StartOption then begin
@@ -4100,7 +4153,7 @@ begin
 end;
 
 procedure TForm1.Start13Click(Sender: TObject);
-{The 10th Start option has been selected}
+{The 13th Start option has been selected}
 begin
   New_StartOption:=13;
   if StartOption<>New_StartOption then begin
@@ -4111,7 +4164,7 @@ begin
 end;
 
 procedure TForm1.Start14Click(Sender: TObject);
-{The 10th Start option has been selected}
+{The 14th Start option has been selected}
 begin
   New_StartOption:=14;
   if StartOption<>New_StartOption then begin
@@ -4122,7 +4175,7 @@ begin
 end;
 
 procedure TForm1.Start15Click(Sender: TObject);
-{The 10th Start option has been selected}
+{The 15th Start option has been selected}
 begin
   New_StartOption:=15;
   if StartOption<>New_StartOption then begin
@@ -4133,7 +4186,7 @@ begin
 end;
 
 procedure TForm1.Start16Click(Sender: TObject);
-{The 10th Start option has been selected}
+{The 16th Start option has been selected}
 begin
   New_StartOption:=16;
   if StartOption<>New_StartOption then begin
@@ -4144,7 +4197,7 @@ begin
 end;
 
 procedure TForm1.Start17Click(Sender: TObject);
-{The 10th Start option has been selected}
+{The 17th Start option has been selected}
 begin
   New_StartOption:=17;
   if StartOption<>New_StartOption then begin
@@ -4155,7 +4208,7 @@ begin
 end;
 
 procedure TForm1.Start18Click(Sender: TObject);
-{The 10th Start option has been selected}
+{The 18th Start option has been selected}
 begin
   New_StartOption:=18;
   if StartOption<>New_StartOption then begin
@@ -4166,7 +4219,7 @@ begin
 end;
 
 procedure TForm1.Start19Click(Sender: TObject);
-{The 10th Start option has been selected}
+{The 19th Start option has been selected}
 begin
   New_StartOption:=19;
   if StartOption<>New_StartOption then begin
@@ -4177,7 +4230,7 @@ begin
 end;
 
 procedure TForm1.Start20Click(Sender: TObject);
-{The 10th Start option has been selected}
+{The 20th Start option has been selected}
 begin
   New_StartOption:=20;
   if StartOption<>New_StartOption then begin
@@ -4188,7 +4241,7 @@ begin
 end;
 
 procedure TForm1.Start21Click(Sender: TObject);
-{The 10th Start option has been selected}
+{The 21st Start option has been selected}
 begin
   New_StartOption:=21;
   if StartOption<>New_StartOption then begin
@@ -4199,7 +4252,7 @@ begin
 end;
 
 procedure TForm1.Start22Click(Sender: TObject);
-{The 10th Start option has been selected}
+{The 22nd Start option has been selected}
 begin
   New_StartOption:=22;
   if StartOption<>New_StartOption then begin
@@ -4210,7 +4263,7 @@ begin
 end;
 
 procedure TForm1.Start23Click(Sender: TObject);
-{The 10th Start option has been selected}
+{The 23rd Start option has been selected}
 begin
   New_StartOption:=23;
   if StartOption<>New_StartOption then begin
@@ -4221,7 +4274,7 @@ begin
 end;
 
 procedure TForm1.Start24Click(Sender: TObject);
-{The 10th Start option has been selected}
+{The 24th Start option has been selected}
 begin
   New_StartOption:=24;
   if StartOption<>New_StartOption then begin
@@ -4232,9 +4285,20 @@ begin
 end;
 
 procedure TForm1.Start25Click(Sender: TObject);
-{The 10th Start option has been selected}
+{The 25th Start option has been selected}
 begin
   New_StartOption:=25;
+  if StartOption<>New_StartOption then begin
+    DoUpdate:=true;
+    Restart:=true;
+    ProfileCancel();
+  end;
+end;
+
+procedure TForm1.Start26Click(Sender: TObject);
+{The 26th Start option has been selected}
+begin
+  New_StartOption:=26;
   if StartOption<>New_StartOption then begin
     DoUpdate:=true;
     Restart:=true;
