@@ -580,22 +580,22 @@ const
   ProtonCharge=(1.60217662E-19);
   NeutronCharge=(0);
 
-  ElectronMass=9.1093835611E-31;
+  ElectronMass=9.1093835611E-31;   // (8.187105650638658873144497804e-14 Joules)
   ElectronComptonWavelength=2*Pi*Hhat/(ElectronMass*SpeedOfLight);
   ElectronComptonRadius=ElectronComptonWavelength/(2*Pi);
   ElectronClassicalRadius=alpha*ElectronComptonRadius;
 
-  ProtonMass=1.6726219E-27;
+  ProtonMass=1.6726219E-27;        // (1.503277594693615520970316e-10 Joules)
   ProtonComptonWavelength=2*Pi*Hhat/(ProtonMass*SpeedOfLight);
   ProtonComptonRadius=ProtonComptonWavelength/(2*Pi);
   ProtonClassicalRadius=alpha*ProtonComptonRadius;
 
-  NeutronMass=1.6749274980495E-27;
+  NeutronMass=1.6749274980495E-27; // (1.50534976288068915159493719318e-10 Joules)
   NeutronComptonWavelength=2*Pi*Hhat/(NeutronMass*SpeedOfLight);
   NeutronComptonRadius=NeutronComptonWavelength/(2*Pi);
   NeutronClassicalRadius=alpha*ProtonComptonRadius;
 
-  ElectronNeutrinoMass=1.17726E-35;
+  ElectronNeutrinoMass=1.17726E-35;// (1.0580685217197059348664e-18 Joules)
   ElectronNeutrinoComptonWavelength=2*Pi*Hhat/(ElectronNeutrinoMass*SpeedOfLight);
   ElectronNeutrinoComptonRadius=ElectronNeutrinoComptonWavelength/(2*Pi);
   ElectronNeutrinoClassicalRadius=alpha*ElectronNeutrinoComptonRadius;
@@ -1583,7 +1583,7 @@ begin
 
        if neutrino then begin
          SpinConstant:=( Hhat / ElectronNeutrinoMass ); // Metres^2/(Radians*Second)
-         delta := ( 1E-20 * Hhat ) / ( 2 * Pi * ElectronNeutrinoMass * SpeedOfLight * Permittivity );
+         delta := ( 1E-19 * Hhat ) / ( 2 * Pi * ElectronNeutrinoMass * SpeedOfLight * Permittivity );
 
          // theta_const is in Radians/Second ( i.e. the same as solving E = hf for f, where E=mc^2, and h=2*Pi*Hhat,
          // then converting f to angular frequency w, via w = 2*Pi*f )
