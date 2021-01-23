@@ -1673,13 +1673,13 @@ begin
        if neutrino then
          Etotal:=ElectronNeutrinoMass*sqr(SpeedOfLight)
        else if proton then
-         Etotal:=(Permeability*SpeedOfLight*SpeedOfLight + 1/Permittivity)*sqr(ProtonCharge)/(8*Pi*ProtonClassicalRadius)
+         Etotal:=(Permeability*sqr(SpeedOfLight) + 1/Permittivity)*sqr(ProtonCharge)/(8*Pi*ProtonClassicalRadius)
        else if neutron then begin
-         Etotal:=(Permeability*SpeedOfLight*SpeedOfLight + 1/Permittivity)*sqr(ProtonCharge)/(8*Pi*ProtonClassicalRadius);
-         Etotal:=Etotal + (Permeability*SpeedOfLight*SpeedOfLight + 1/Permittivity)*sqr(ElectronCharge)/(8*Pi*ElectronClassicalRadius);
+         Etotal:=(Permeability*sqr(SpeedOfLight) + 1/Permittivity)*sqr(ProtonCharge)/(8*Pi*ProtonClassicalRadius);
+         Etotal:=Etotal + (Permeability*sqr(SpeedOfLight) + 1/Permittivity)*sqr(ElectronCharge)/(8*Pi*ElectronClassicalRadius);
        end
        else
-         Etotal:=(Permeability*SpeedOfLight*SpeedOfLight + 1/Permittivity)*sqr(ElectronCharge)/(8*Pi*ElectronClassicalRadius);
+         Etotal:=(Permeability*sqr(SpeedOfLight) + 1/Permittivity)*sqr(ElectronCharge)/(8*Pi*ElectronClassicalRadius);
 
        if two_particles then Etotal := 2*Etotal;
 
@@ -2487,6 +2487,8 @@ begin
 
                if (proton or neutron) then
                  MeC_Hhat:= (ProtonMass*SpeedOfLight/Hhat)
+               else if neutrino then
+                 MeC_Hhat:= (ElectronNeutrinoMass*SpeedOfLight/Hhat)
                else
                  MeC_Hhat:= (ElectronMass*SpeedOfLight/Hhat);
 
