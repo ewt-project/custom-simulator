@@ -581,24 +581,24 @@ const
   NeutronCharge=(0);
 
   ElectronMass=9.1093835611E-31;   // (8.187105650638658873144497804e-14 Joules)
-  ElectronComptonWavelength=2*Pi*Hhat/(ElectronMass*SpeedOfLight);
-  ElectronComptonRadius=ElectronComptonWavelength/(2*Pi);
-  ElectronClassicalRadius=alpha*ElectronComptonRadius;
+  ElectronComptonWavelength=2*Pi*Hhat/(ElectronMass*SpeedOfLight); // 2.4263097661e-12
+  ElectronComptonRadius=ElectronComptonWavelength/(2*Pi);  // 3.8615919275e-13
+  ElectronClassicalRadius=alpha*ElectronComptonRadius;  // 2.8179397774e-15
 
   ProtonMass=1.6726219E-27;        // (1.503277594693615520970316e-10 Joules)
-  ProtonComptonWavelength=2*Pi*Hhat/(ProtonMass*SpeedOfLight);
-  ProtonComptonRadius=ProtonComptonWavelength/(2*Pi);
-  ProtonClassicalRadius=alpha*ProtonComptonRadius;
+  ProtonComptonWavelength=2*Pi*Hhat/(ProtonMass*SpeedOfLight);  // 1.3214095964e-15
+  ProtonComptonRadius=ProtonComptonWavelength/(2*Pi);  // 2.1030886911e-16
+  ProtonClassicalRadius=alpha*ProtonComptonRadius;  // 1.5346979664e-18
 
   NeutronMass=1.6749274980495E-27; // (1.50534976288068915159493719318e-10 Joules)
-  NeutronComptonWavelength=2*Pi*Hhat/(NeutronMass*SpeedOfLight);
-  NeutronComptonRadius=NeutronComptonWavelength/(2*Pi);
-  NeutronClassicalRadius=alpha*ProtonComptonRadius;
+  NeutronComptonWavelength=2*Pi*Hhat/(NeutronMass*SpeedOfLight);  // 1.3195906285e-15
+  NeutronComptonRadius=NeutronComptonWavelength/(2*Pi);  // 2.1001937138e-16
+  NeutronClassicalRadius=alpha*ProtonComptonRadius;  // 1.5346979664e-18
 
   ElectronNeutrinoMass=1.17726E-35;// (1.0580685217197059348664e-18 Joules)
-  ElectronNeutrinoComptonWavelength=2*Pi*Hhat/(ElectronNeutrinoMass*SpeedOfLight);
-  ElectronNeutrinoComptonRadius=ElectronNeutrinoComptonWavelength/(2*Pi);
-  ElectronNeutrinoClassicalRadius=alpha*ElectronNeutrinoComptonRadius;
+  ElectronNeutrinoComptonWavelength=2*Pi*Hhat/(ElectronNeutrinoMass*SpeedOfLight);  // 1.8774260824e-07
+  ElectronNeutrinoComptonRadius=ElectronNeutrinoComptonWavelength/(2*Pi);  // 2.988016413e-08
+  ElectronNeutrinoClassicalRadius=alpha*ElectronNeutrinoComptonRadius;  // 2.1804609249e-10
 
   Max_E=0;  {Max value of Electric field to allow per pixel - Volts/m (0 value disables it)}
   Max_B=0;  {Max value of Magnetic field to allow per pixel - Tesla (0 value disables it)}
@@ -1457,6 +1457,13 @@ begin
   end;
 
   if StartOptionChanged then begin
+    if not neutrino and not EFormulaCheckBox.Enabled then begin
+      EFormulaCheckBox.Checked:=true;
+      HFormulaCheckBox.Checked:=true;
+      EFormulaCheckBox.Enabled:=true;
+      HFormulaCheckBox.Enabled:=true;
+    end;
+
     if (proton or neutron) then begin
       ActualGridWidth.Text:=FloatToStrf(1.5E-14,ffExponent,5,2); {display actual size in metres that grid represents}
       if proton then RateOfTime.Position:=3;
@@ -1465,7 +1472,11 @@ begin
       Restart:=true;
     end
     else if neutrino then begin
-      ActualGridWidth.Text:=FloatToStrf(3.0E-5,ffExponent,5,2); {display actual size in metres that grid represents}
+      EFormulaCheckBox.Checked:=false;
+      HFormulaCheckBox.Checked:=false;
+      EFormulaCheckBox.Enabled:=false;
+      HFormulaCheckBox.Enabled:=false;
+      ActualGridWidth.Text:=FloatToStrf(2.7E-5,ffExponent,5,2); {display actual size in metres that grid represents}
       RateOfTime.Position:=4000;
       New_RateOfTime:=RateOfTime.Position * 20000;
       ProcSetGridGlobals(Self);
@@ -1583,7 +1594,7 @@ begin
 
        if neutrino then begin
          SpinConstant:=( Hhat / ElectronNeutrinoMass ); // Metres^2/(Radians*Second)
-         delta := ( 1E-19 * Hhat ) / ( 2 * Pi * ElectronNeutrinoMass * SpeedOfLight * Permittivity );
+         delta := ( abs(ElectronCharge) * Hhat ) / ( 2 * Pi * ElectronNeutrinoMass * SpeedOfLight * Permittivity );
 
          // theta_const is in Radians/Second ( i.e. the same as solving E = hf for f, where E=mc^2, and h=2*Pi*Hhat,
          // then converting f to angular frequency w, via w = 2*Pi*f )
