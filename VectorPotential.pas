@@ -2652,8 +2652,6 @@ begin
                actual_y:=y*dy;
                actual_z:=z*dz;
 
-               // From Maple calculations:
-               //
                with points[NewScreen]^[xpos,ypos,zpos].Electric do begin
                  if electron then
                    M:=ElectronMass
@@ -2684,6 +2682,8 @@ begin
                  c:=SpeedOfLight;
                  E0:=Permittivity;
 
+                 // From Maple calculations:
+                 //
                  if ( ViewTop ) then begin
                    if neutron or neutrino then begin
                      x:=  (((15/8)*Hhat*Qcos1*sqr(actual_x))/(Pi*Power(sqr(r),(5/2))*M*c*E0) -
@@ -2892,10 +2892,6 @@ begin
                    z:=particle_1_2_B[xpos,ypos,zpos].z;
                  end
                  else begin
-                   // From Maple calculations:
-                   //
-                   // B = Curl(A)
-                   //
                    if electron then
                      M:=ElectronMass
                    else if proton then
@@ -2910,7 +2906,6 @@ begin
 
                    if electron then begin
                      charge_sign:=sign(ElectronCharge);
-                     charge_factor:=charge_sign;
                    end
                    else if neutron or neutrino then begin
                      charge_sign:=-1;
@@ -2925,6 +2920,10 @@ begin
                    c:=SpeedOfLight;
                    E0:=Permittivity;
 
+                   // From Maple calculations:
+                   //
+                   // B = Curl(A)
+                   //
                    if ( ViewTop ) then begin
                      if neutron or neutrino then begin
                        x:=-(5/8)*Qcos1/(c*Pi*Power(sqr(r),(3/2))*E0) -
@@ -2941,10 +2940,6 @@ begin
                        y:=y*actual_z;
                      end
                      // For charged particles (electron, positron, proton):
-                     //
-                     // B = [(m/(Hhat*r^2))*Y_x*z + (m^2c/(r*Hhat^2))*Y_y*z,
-                     //      (m/(Hhat*r^2))*Y_y*z - (m^2c/(r*Hhat^2)*Y_x*z,
-                     //      -(m/(Hhat*r^2))*Y_x*x - (m^2c/(r*Hhat^2))*Y_y*x - (m/(Hhat*r^2))*Y_y*y + (m^2c/(r*Hhat^2)*Y_x*y]
                      else begin
                        x:=-((1/2)*Qcos2*actual_z/(c*Pi*Power(sqr(r),(3/2))*E0) +
                             (1/2)*Qsin2*M*actual_z/(Pi*sqr(r)*E0*Hhat));
