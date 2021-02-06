@@ -575,10 +575,11 @@ const
   Ek=8.9875517873681764e9; {Coulomb's constant}
   alpha=0.007297352569311; {Fine Structure Constant}
 
-  ElectronCharge=-(1.60217662E-19);
-  PositronCharge=(1.60217662E-19);
-  ProtonCharge=(1.60217662E-19);
-  NeutronCharge=(0);
+  UnitaryCharge=1.60217662E-19;
+  ElectronCharge=-UnitaryCharge;
+  PositronCharge=UnitaryCharge;
+  ProtonCharge=UnitaryCharge;
+  NeutronCharge=0;
 
   ElectronMass=9.1093835611E-31;   // (8.187105650638658873144497804e-14 Joules)
   ElectronComptonWavelength=2*Pi*Hhat/(ElectronMass*SpeedOfLight); // 2.4263097661e-12
@@ -1184,10 +1185,10 @@ var
   ElecFieldCurl_Sum, ElecFieldFromV_Sum, ElecFieldFromA_Sum, ElecField_Sum, MagField_Sum, VectorPotential_Sum : extended;
   ElecFieldFromV_SignedHalf_SumX, ElecFieldFromA_SignedHalf_SumX : extended;
   ElecFieldGradDivPsi_SignedHalf_SumX, ElecFieldCurlCurlPsi_SignedHalf_SumX :extended;
-  c1,c2,c3,A,DistFromCenter,ExpectedAccel,E_Energy_Sum,B_Energy_Sum,MeC_Hhat: Extended;
+  c1,c2,c3,A,DistFromCenter,ExpectedAccel,E_Energy_Sum,B_Energy_Sum: Extended;
   field_stats: boolean;
   sine_wave_sum, neutron_quarks, neutrino_quarklets: boolean;
-  progress, progress_inc, r_contracted, x_contracted, x_velocity, gamma, r_gamma: single;
+  progress, progress_inc, r_contracted, x_contracted, x_velocity, gamma, r_gamma, charge_sign, charge_factor: single;
   Qsin1, Qcos1, Qsin2, Qcos2, M, c, E0: extended;
 
 begin
@@ -1610,47 +1611,47 @@ begin
 
        if neutrino then begin
          SpinConstant:=( Hhat / ElectronNeutrinoMass ); // Metres^2/(Radians*Second)
-         delta := ( abs(ElectronCharge) * Hhat ) / ( 2 * Pi * ElectronNeutrinoMass * SpeedOfLight * Permittivity );
+         delta := ( ElectronCharge * Hhat ) / ( 2 * Pi * ElectronNeutrinoMass * SpeedOfLight * Permittivity );
 
          // theta_const is in Radians/Second ( i.e. the same as solving E = hf for f, where E=mc^2, and h=2*Pi*Hhat,
          // then converting f to angular frequency w, via w = 2*Pi*f )
          // ( theta_const could be, equivalently : - c^2/SpinConstant )
-         theta_const:=( -ElectronNeutrinoMass * sqr(SpeedOfLight) ) / Hhat;
+         theta_const:=sign(ElectronCharge)*( ElectronNeutrinoMass * sqr(SpeedOfLight) ) / Hhat;
        end
        else if proton then begin
          SpinConstant:=( Hhat / ProtonMass ); // Metres^2/(Radians*Second)
-         delta := ( abs(ProtonCharge) * Hhat ) / ( 2 * Pi * ProtonMass * SpeedOfLight * Permittivity );
+         delta := ( ProtonCharge * Hhat ) / ( 2 * Pi * ProtonMass * SpeedOfLight * Permittivity );
 
          // theta_const is in Radians/Second ( i.e. the same as solving E = hf for f, where E=mc^2, and h=2*Pi*Hhat,
          // then converting f to angular frequency w, via w = 2*Pi*f )
          // ( theta_const could be, equivalently : - c^2/SpinConstant )
-         theta_const:=( -ProtonMass * sqr(SpeedOfLight) ) / Hhat;
+         theta_const:=sign(ProtonCharge)*( ProtonMass * sqr(SpeedOfLight) ) / Hhat;
        end
        else if neutron then begin
          if two_particle_composite then begin
            SpinConstant:=( Hhat / NeutronMass ); // Metres^2/(Radians*Second)
-           delta1 := ( abs(ProtonCharge) * Hhat ) / ( 2 * Pi * ProtonMass * SpeedOfLight * Permittivity );
-           delta2 := ( abs(ElectronCharge) * Hhat ) / ( 2 * Pi * ElectronMass * SpeedOfLight * Permittivity );
+           delta1 := ( ProtonCharge * Hhat ) / ( 2 * Pi * ProtonMass * SpeedOfLight * Permittivity );
+           delta2 := ( ElectronCharge * Hhat ) / ( 2 * Pi * ElectronMass * SpeedOfLight * Permittivity );
 
            // theta_const is in Radians/Second ( i.e. the same as solving E = hf for f, where E=mc^2, and h=2*Pi*Hhat,
            // then converting f to angular frequency w, via w = 2*Pi*f )
            // ( theta_const could be, equivalently : - c^2/SpinConstant )
-           theta_const1:=( -ProtonMass * sqr(SpeedOfLight) ) / Hhat;
-           theta_const2:=( -ElectronMass * sqr(SpeedOfLight) ) / Hhat;
+           theta_const1:=sign(ProtonCharge)*( ProtonMass * sqr(SpeedOfLight) ) / Hhat;
+           theta_const2:=sign(ElectronCharge)*( ElectronMass * sqr(SpeedOfLight) ) / Hhat;
          end
          else begin
            SpinConstant:=( Hhat / NeutronMass ); // Metres^2/(Radians*Second)
-           delta := ( abs(ProtonCharge) * Hhat ) / ( 2 * Pi * NeutronMass * SpeedOfLight * Permittivity );
+           delta := ( UnitaryCharge * Hhat ) / ( 2 * Pi * NeutronMass * SpeedOfLight * Permittivity );
 
            // theta_const is in Radians/Second ( i.e. the same as solving E = hf for f, where E=mc^2, and h=2*Pi*Hhat,
            // then converting f to angular frequency w, via w = 2*Pi*f )
            // ( theta_const could be, equivalently : - c^2/SpinConstant )
-           theta_const:=( -NeutronMass * sqr(SpeedOfLight) ) / Hhat;
+           theta_const:=( NeutronMass * sqr(SpeedOfLight) ) / Hhat;
          end;
        end
        else begin
          SpinConstant:=( Hhat / ElectronMass ); // Metres^2/(Radians*Second)
-         delta := ( abs(ElectronCharge) * Hhat ) / ( 2 * Pi * ElectronMass * SpeedOfLight * Permittivity );
+         delta := sign(ElectronCharge)*( ElectronCharge * Hhat ) / ( 2 * Pi * ElectronMass * SpeedOfLight * Permittivity );
 
          // theta_const is in Radians/Second ( i.e. the same as solving E = hf for f, where E=mc^2, and h=2*Pi*Hhat,
          // then converting f to angular frequency w, via w = 2*Pi*f )
@@ -2651,147 +2652,176 @@ begin
                actual_y:=y*dy;
                actual_z:=z*dz;
 
-               if proton then
-                 MeC_Hhat:= (ProtonMass*SpeedOfLight/Hhat)
-               else
-                 MeC_Hhat:= (ElectronMass*SpeedOfLight/Hhat);
-
-               // Get the Psi (Y) vector
-               vect := points[NewScreen]^[xpos,ypos,zpos].PsiVect;
-
                // From Maple calculations:
                //
                with points[NewScreen]^[xpos,ypos,zpos].Electric do begin
-                 if neutron or neutrino then begin
-                   // Also had to make cos terms negative
-				           Qsin1 := sqrt(4/5)*abs(ProtonCharge)*sin(theta_const*(-Time - r/(SpeedOfLight - x_velocity)));
-                   Qcos1 := sqrt(4/5)*abs(ProtonCharge)*cos(theta_const*(-Time - r/(SpeedOfLight - x_velocity)));
-                   Qsin2 := sqrt(4/5)*abs(ProtonCharge)*sin(theta_const*(-Time + r/(SpeedOfLight - x_velocity)));
-                   Qcos2 := sqrt(4/5)*abs(ProtonCharge)*cos(theta_const*(-Time + r/(SpeedOfLight - x_velocity)));
+                 if electron then
+                   M:=ElectronMass
+                 else if proton then
+                   M:=ProtonMass
+                 else if neutron then
+                   M:=NeutronMass
+                 else if neutrino then
+                   M:=ElectronNeutrinoMass;
 
-                   c:=SpeedOfLight;
-                   E0:=Permittivity;
+                 charge_sign:=1;
+                 charge_factor:=1;
 
-                   if neutron then
-                     M:=NeutronMass
-                   else
-                     M:=ElectronNeutrinoMass;
+                 if electron then begin
+                   charge_sign:=sign(ElectronCharge);
+                   charge_factor:=charge_sign;
+                 end
+                 else if neutron or neutrino then begin
+                   charge_sign:=-1;
+                   charge_factor:=sqrt(4/5);
                  end;
+
+                 Qsin1 := -charge_factor*UnitaryCharge*sin(theta_const*(Time - charge_sign*r/(SpeedOfLight - x_velocity)));
+                 Qcos1 := -charge_factor*UnitaryCharge*cos(theta_const*(Time - charge_sign*r/(SpeedOfLight - x_velocity)));
+                 Qsin2 := -charge_factor*UnitaryCharge*sin(theta_const*(Time + charge_sign*r/(SpeedOfLight - x_velocity)));
+                 Qcos2 := -charge_factor*UnitaryCharge*cos(theta_const*(Time + charge_sign*r/(SpeedOfLight - x_velocity)));
+
+                 c:=SpeedOfLight;
+                 E0:=Permittivity;
 
                  if ( ViewTop ) then begin
                    if neutron or neutrino then begin
-                     x:=((-(15/8)*Hhat*Qcos1*sqr(actual_x))/(Pi*Power(sqr(r),(5/2))*M*c*E0) -
-                          ((15/8)*Qsin1*sqr(actual_x))/(Pi*Power(sqr(r),2)*E0) +
-                          ((5/8)*Hhat*Qcos1)/(Pi*Power(sqr(r),(3/2))*M*c*E0) +
+                     x:=  (((15/8)*Hhat*Qcos1*sqr(actual_x))/(Pi*Power(sqr(r),(5/2))*M*c*E0) -
+                          ((15/8)*Qsin1*sqr(actual_x))/(Pi*Power(sqr(r),2)*E0) -
+                          ((5/8)*Hhat*Qcos1)/(Pi*Power(sqr(r),(3/2))*M*c*E0) -
                           ((5/8)*Qcos1*M*c*sqr(actual_x))/(Pi*Power(sqr(r),(3/2))*E0*Hhat) +
                           ((5/8)*Qsin1)/(Pi*sqr(r)*E0) +
-                          ((3/4)*Hhat*Qsin1)*(actual_y*actual_x)/(Pi*Power(sqr(r),(5/2))*M*c*E0) -
+                          ((3/4)*Hhat*Qsin1)*(actual_y*actual_x)/(Pi*Power(sqr(r),(5/2))*M*c*E0) +
                           ((3/4)*Qcos1)*(actual_x*actual_y)/(Pi*Power(sqr(r),2)*E0) -
                           ((1/4)*Qsin1)*M*c*(actual_x*actual_y)/(Pi*Power(sqr(r),(3/2))*E0*Hhat) +
-                          ((9/8)*Hhat*Qsin2)*(actual_y*actual_x)/(Pi*Power(sqr(r),(5/2))*M*c*E0) +
+                          ((9/8)*Hhat*Qsin2)*(actual_y*actual_x)/(Pi*Power(sqr(r),(5/2))*M*c*E0) -
                           ((9/8)*Qcos2)*(actual_x*actual_y)/(Pi*Power(sqr(r),2)*E0) -
-                          ((3/8)*Qsin2)*M*c*(actual_x*actual_y)/(Pi*Power(sqr(r),(3/2))*E0*Hhat) +
+                          ((3/8)*Qsin2)*M*c*(actual_x*actual_y)/(Pi*Power(sqr(r),(3/2))*E0*Hhat) -
                           ((5/8)*c*Qcos1*M)/(Pi*r*E0*Hhat));
 
-                     y:=((-(15/8)*Hhat*Qcos1*(actual_x*actual_y))/(Pi*Power(sqr(r),(5/2))*M*c*E0) -
-                          ((15/8)*Qsin1*(actual_y*actual_x))/(Pi*Power(sqr(r),2)*E0) +
+                     y:=  (((15/8)*Hhat*Qcos1*(actual_x*actual_y))/(Pi*Power(sqr(r),(5/2))*M*c*E0) -
+                          ((15/8)*Qsin1*(actual_y*actual_x))/(Pi*Power(sqr(r),2)*E0) -
                           ((5/8)*Qcos1*M*c*(actual_y*actual_x))/(Pi*Power(sqr(r),(3/2))*E0*Hhat) +
-                          ((3/4)*Hhat*Qsin1)*sqr(actual_y)/(Pi*Power(sqr(r),(5/2))*M*c*E0) -
+                          ((3/4)*Hhat*Qsin1)*sqr(actual_y)/(Pi*Power(sqr(r),(5/2))*M*c*E0) +
                           ((3/4)*Qcos1)*sqr(actual_y)/(Pi*Power(sqr(r),2)*E0) -
                           ((1/4)*Hhat*Qsin1)/(Pi*Power(sqr(r),(3/2))*M*c*E0) -
-                          ((1/4)*Qsin1)*M*c*sqr(actual_y)/(Pi*Power(sqr(r),(3/2))*E0*Hhat) +
+                          ((1/4)*Qsin1)*M*c*sqr(actual_y)/(Pi*Power(sqr(r),(3/2))*E0*Hhat) -
                           ((1/4)*Qcos1)/(Pi*sqr(r)*E0) +
-                          ((9/8)*Hhat*Qsin2)*sqr(actual_y)/(Pi*Power(sqr(r),(5/2))*M*c*E0) +
+                          ((9/8)*Hhat*Qsin2)*sqr(actual_y)/(Pi*Power(sqr(r),(5/2))*M*c*E0) -
                           ((9/8)*Qcos2*sqr(actual_y))/(Pi*Power(sqr(r),2)*E0) -
                           ((3/8)*Hhat*Qsin2)/(Pi*Power(sqr(r),(3/2))*M*c*E0) -
-                          ((3/8)*Qsin2)*M*c*sqr(actual_y)/(Pi*Power(sqr(r),(3/2))*E0*Hhat) -
+                          ((3/8)*Qsin2)*M*c*sqr(actual_y)/(Pi*Power(sqr(r),(3/2))*E0*Hhat) +
                           ((3/8)*Qcos2)/(Pi*sqr(r)*E0) -
                           (1/sqr(c))*((1/4)*Power(c,3)*Qsin1*M/(Pi*r*E0*Hhat) +
                                       (3/8)*Power(c,3)*Qsin2*M/(Pi*r*E0*Hhat)));
 
-                     z:=(-(15/8)*Hhat*Qcos1*(actual_x*actual_z)/(Pi*Power(sqr(r),(5/2))*M*c*E0) -
-                         (15/8)*Qsin1*(actual_z*actual_x)/(Pi*Power(sqr(r),2)*E0) +
+                     z:=((15/8)*Hhat*Qcos1*(actual_x*actual_z)/(Pi*Power(sqr(r),(5/2))*M*c*E0) -
+                         (15/8)*Qsin1*(actual_z*actual_x)/(Pi*Power(sqr(r),2)*E0) -
                          (5/8)*Qcos1*M*c*(actual_z*actual_x)/(Pi*Power(sqr(r),(3/2))*E0*Hhat) +
-                         (3/4)*Hhat*Qsin1*(actual_y*actual_z)/(Pi*Power(sqr(r),(5/2))*M*c*E0) -
+                         (3/4)*Hhat*Qsin1*(actual_y*actual_z)/(Pi*Power(sqr(r),(5/2))*M*c*E0) +
                          (3/4)*Qcos1*(actual_z*actual_y)/(Pi*Power(sqr(r),2)*E0) -
                          (1/4)*Qsin1*M*c*(actual_z*actual_y)/(Pi*Power(sqr(r),(3/2))*E0*Hhat) +
-                         (9/8)*Hhat*Qsin2*(actual_y*actual_z)/(Pi*Power(sqr(r),(5/2))*M*c*E0) +
+                         (9/8)*Hhat*Qsin2*(actual_y*actual_z)/(Pi*Power(sqr(r),(5/2))*M*c*E0) -
                          (9/8)*Hhat*Qcos2*(actual_z*actual_y)/(Pi*Power(sqr(r),2)*E0) -
                          (3/8)*Qsin2*M*c*(actual_z*actual_y)/(Pi*Power(sqr(r),(3/2))*E0*Hhat));
                    end
                    else begin
-                     x:=(3*vect.x*r/Power(sqr(r),5/2))*sqr(actual_x) + MeC_Hhat*(3*vect.y*r/Power(sqr(r),2))*sqr(actual_x) -
-                        vect.x*r/Power(sqr(r),3/2) - sqr(MeC_Hhat)*(vect.x*r/Power(sqr(r),3/2))*sqr(actual_x) -
-                        MeC_Hhat*(vect.y*r/sqr(r)) + (3*vect.y*r/Power(sqr(r),5/2))*actual_x*actual_y -
-                        MeC_Hhat*(3*vect.x*r/Power(sqr(r), 2))*actual_x*actual_y -
-                        sqr(MeC_Hhat)*(vect.y*r/Power(sqr(r),3/2))*actual_x*actual_y - sqr(MeC_Hhat)*vect.x;
+                     x:=-(-(3/2)*Hhat*Qcos2*sqr(actual_x)/(Pi*Power(sqr(r),(5/2))*M*c*E0) -
+                        (3/2)*Qsin2*sqr(actual_x)/(Pi*Power(sqr(r),2)*E0) +
+                        (1/2)*Hhat*Qcos2/(Pi*Power(sqr(r),(3/2))*M*c*E0) +
+                        (1/2)*Qcos2*M*c*sqr(actual_x)/(Pi*Power(sqr(r),(3/2))*E0*Hhat) +
+                        (1/2)*Qsin2/(Pi*sqr(r)*E0) -
+                        (3/2)*Hhat*Qsin2*actual_y*actual_x/(Pi*Power(sqr(r),(5/2))*M*c*E0) +
+                        (3/2)*Qcos2*actual_x*actual_y/(Pi*Power(sqr(r),2)*E0) +
+                        (1/2)*Qsin2*M*c*actual_x*actual_y/(Pi*Power(sqr(r),(3/2))*E0*Hhat) +
+                        (1/2)*Qcos2*M*c/(Pi*r*E0*Hhat));
 
-                     y:=(3*vect.x*r/Power(sqr(r),5/2))*actual_x*actual_y + MeC_Hhat*(3*vect.y*r/Power(sqr(r),2))*actual_x*actual_y -
-                        sqr(MeC_Hhat)*(vect.x*r/Power(sqr(r),3/2))*actual_x*actual_y + (3*vect.y*r/Power(sqr(r),5/2))*sqr(actual_y) -
-                        MeC_Hhat*(3*vect.x*r/Power(sqr(r), 2))*sqr(actual_y) - (vect.y*r/Power(sqr(r),3/2)) -
-                        sqr(MeC_Hhat)*(vect.y*r/Power(sqr(r),3/2))*sqr(actual_y) + MeC_Hhat*(vect.x*r/sqr(r)) - sqr(MeC_Hhat)*vect.y;
+                     y:=-(-(3/2)*Hhat*Qcos2*actual_x*actual_y/(Pi*Power(sqr(r),(5/2))*M*c*E0) -
+                        (3/2)*Qsin2*actual_y*actual_x/(Pi*Power(sqr(r),2)*E0) +
+                        (1/2)*Qcos2*M*c*actual_y*actual_x/(Pi*Power(sqr(r),(3/2))*E0*Hhat) -
+                        (3/2)*Hhat*Qsin2*sqr(actual_y)/(Pi*Power(sqr(r),(5/2))*M*c*E0) +
+                        (3/2)*Qcos2*sqr(actual_y)/(Pi*Power(sqr(r),2)*E0) +
+                        (1/2)*Hhat*Qsin2/(Pi*Power(sqr(r),(3/2))*M*c*E0) +
+                        (1/2)*Qsin2*M*c*sqr(actual_y)/(Pi*Power(sqr(r),(3/2))*E0*Hhat) -
+                        (1/2)*Qcos2/(Pi*sqr(r)*E0) +
+                        (1/2)*Qsin2*M*c/(Pi*r*E0*Hhat));
 
-                     z:=(3*vect.x*r/Power(sqr(r),5/2))*actual_x*actual_z + MeC_Hhat*(3*vect.y*r/Power(sqr(r),2))*actual_x*actual_z -
-                        sqr(MeC_Hhat)*(vect.x*r/Power(sqr(r),3/2))*actual_x*actual_z + (3*vect.y*r/Power(sqr(r),5/2))*actual_y*actual_z -
-                        MeC_Hhat*(3*vect.x*r/Power(sqr(r), 2))*actual_y*actual_z - sqr(MeC_Hhat)*(vect.y*r/Power(sqr(r),3/2))*actual_y*actual_z;
+                     z:=-(-(3/2)*Hhat*Qcos2*actual_x*actual_z/(Pi*Power(sqr(r),(5/2))*M*c*E0) -
+                        (3/2)*Qsin2*actual_z*actual_x/(Pi*Power(sqr(r),2)*E0) +
+                        (1/2)*Qcos2*M*c*actual_z*actual_x/(Pi*Power(sqr(r),(3/2))*E0*Hhat) -
+                        (3/2)*Hhat*Qsin2*actual_y*actual_z/(Pi*Power(sqr(r),(5/2))*M*c*E0) +
+                        (3/2)*Qcos2*actual_z*actual_y/(Pi*Power(sqr(r),2)*E0) +
+                        (1/2)*Qsin2*M*c*actual_z*actual_y/(Pi*Power(sqr(r),(3/2))*E0*Hhat));
                    end;
                  end
                  else begin // remap y -> -z and z -> y
                    if neutron or neutrino then begin
-                     x:=((-(15/8)*Hhat*Qcos1*sqr(actual_x))/(Pi*Power(sqr(r),(5/2))*M*c*E0) -
-                          ((15/8)*Qsin1*sqr(actual_x))/(Pi*Power(sqr(r),2)*E0) +
-                          ((5/8)*Hhat*Qcos1)/(Pi*Power(sqr(r),(3/2))*M*c*E0) +
+                     x:=(((15/8)*Hhat*Qcos1*sqr(actual_x))/(Pi*Power(sqr(r),(5/2))*M*c*E0) -
+                          ((15/8)*Qsin1*sqr(actual_x))/(Pi*Power(sqr(r),2)*E0) -
+                          ((5/8)*Hhat*Qcos1)/(Pi*Power(sqr(r),(3/2))*M*c*E0) -
                           ((5/8)*Qcos1*M*c*sqr(actual_x))/(Pi*Power(sqr(r),(3/2))*E0*Hhat) +
                           ((5/8)*Qsin1)/(Pi*sqr(r)*E0) +
-                          ((3/4)*Hhat*Qsin1)*(actual_z*actual_x)/(Pi*Power(sqr(r),(5/2))*M*c*E0) -
+                          ((3/4)*Hhat*Qsin1)*(actual_z*actual_x)/(Pi*Power(sqr(r),(5/2))*M*c*E0) +
                           ((3/4)*Qcos1)*(actual_x*actual_z)/(Pi*Power(sqr(r),2)*E0) -
                           ((1/4)*Qsin1)*M*c*(actual_x*actual_z)/(Pi*Power(sqr(r),(3/2))*E0*Hhat) +
-                          ((9/8)*Hhat*Qsin2)*(actual_z*actual_x)/(Pi*Power(sqr(r),(5/2))*M*c*E0) +
+                          ((9/8)*Hhat*Qsin2)*(actual_z*actual_x)/(Pi*Power(sqr(r),(5/2))*M*c*E0) -
                           ((9/8)*Qcos2)*(actual_x*actual_z)/(Pi*Power(sqr(r),2)*E0) -
-                          ((3/8)*Qsin2)*M*c*(actual_x*actual_z)/(Pi*Power(sqr(r),(3/2))*E0*Hhat) +
+                          ((3/8)*Qsin2)*M*c*(actual_x*actual_z)/(Pi*Power(sqr(r),(3/2))*E0*Hhat) -
                           ((5/8)*c*Qcos1*M)/(Pi*r*E0*Hhat));
 
-                     y:=-((-(15/8)*Hhat*Qcos1*(actual_x*actual_y)/(Pi*Power(sqr(r),(5/2))*M*c*E0) -
-                         (15/8)*Qsin1*(actual_y*actual_x)/(Pi*Power(sqr(r),2)*E0) +
+                     y:= (((15/8)*Hhat*Qcos1*(actual_x*actual_y)/(Pi*Power(sqr(r),(5/2))*M*c*E0) -
+                         (15/8)*Qsin1*(actual_y*actual_x)/(Pi*Power(sqr(r),2)*E0) -
                          (5/8)*Qcos1*M*c*(actual_y*actual_x)/(Pi*Power(sqr(r),(3/2))*E0*Hhat) +
-                         (3/4)*Hhat*Qsin1*(actual_z*actual_y)/(Pi*Power(sqr(r),(5/2))*M*c*E0) -
+                         (3/4)*Hhat*Qsin1*(actual_z*actual_y)/(Pi*Power(sqr(r),(5/2))*M*c*E0) +
                          (3/4)*Qcos1*(actual_y*actual_z)/(Pi*Power(sqr(r),2)*E0) -
                          (1/4)*Qsin1*M*c*(actual_y*actual_z)/(Pi*Power(sqr(r),(3/2))*E0*Hhat) +
-                         (9/8)*Hhat*Qsin2*(actual_z*actual_y)/(Pi*Power(sqr(r),(5/2))*M*c*E0) +
+                         (9/8)*Hhat*Qsin2*(actual_z*actual_y)/(Pi*Power(sqr(r),(5/2))*M*c*E0) -
                          (9/8)*Hhat*Qcos2*(actual_y*actual_z)/(Pi*Power(sqr(r),2)*E0) -
                          (3/8)*Qsin2*M*c*(actual_y*actual_z)/(Pi*Power(sqr(r),(3/2))*E0*Hhat)));
 
-                     z:=(-(15/8)*Hhat*Qcos1*(actual_x*actual_z))/(Pi*Power(sqr(r),(5/2))*M*c*E0) -
-                          ((15/8)*Qsin1*(actual_z*actual_x))/(Pi*Power(sqr(r),2)*E0) +
+                     z:=  (((15/8)*Hhat*Qcos1*(actual_x*actual_z))/(Pi*Power(sqr(r),(5/2))*M*c*E0) -
+                          ((15/8)*Qsin1*(actual_z*actual_x))/(Pi*Power(sqr(r),2)*E0) -
                           ((5/8)*Qcos1*M*c*(actual_z*actual_x))/(Pi*Power(sqr(r),(3/2))*E0*Hhat) +
-                          ((3/4)*Hhat*Qsin1)*sqr(actual_z)/(Pi*Power(sqr(r),(5/2))*M*c*E0) -
+                          ((3/4)*Hhat*Qsin1)*sqr(actual_z)/(Pi*Power(sqr(r),(5/2))*M*c*E0) +
                           ((3/4)*Qcos1)*sqr(actual_z)/(Pi*Power(sqr(r),2)*E0) -
                           ((1/4)*Hhat*Qsin1)/(Pi*Power(sqr(r),(3/2))*M*c*E0) -
-                          ((1/4)*Qsin1)*M*c*sqr(actual_z)/(Pi*Power(sqr(r),(3/2))*E0*Hhat) +
+                          ((1/4)*Qsin1)*M*c*sqr(actual_z)/(Pi*Power(sqr(r),(3/2))*E0*Hhat) -
                           ((1/4)*Qcos1)/(Pi*sqr(r)*E0) +
-                          ((9/8)*Hhat*Qsin2)*sqr(actual_z)/(Pi*Power(sqr(r),(5/2))*M*c*E0) +
+                          ((9/8)*Hhat*Qsin2)*sqr(actual_z)/(Pi*Power(sqr(r),(5/2))*M*c*E0) -
                           ((9/8)*Qcos2*sqr(actual_z))/(Pi*Power(sqr(r),2)*E0) -
                           ((3/8)*Hhat*Qsin2)/(Pi*Power(sqr(r),(3/2))*M*c*E0) -
-                          ((3/8)*Qsin2)*M*c*sqr(actual_z)/(Pi*Power(sqr(r),(3/2))*E0*Hhat) -
+                          ((3/8)*Qsin2)*M*c*sqr(actual_z)/(Pi*Power(sqr(r),(3/2))*E0*Hhat) +
                           ((3/8)*Qcos2)/(Pi*sqr(r)*E0) -
                           (1/sqr(c))*((1/4)*Power(c,3)*Qsin1*M/(Pi*r*E0*Hhat) +
-                                      (3/8)*Power(c,3)*Qsin2*M/(Pi*r*E0*Hhat));
+                                      (3/8)*Power(c,3)*Qsin2*M/(Pi*r*E0*Hhat)));
                    end
-                   else begin // remap y -> z and z -> -y
-                     x:=(3*vect.x*r/Power(sqr(r),5/2))*sqr(actual_x) + MeC_Hhat*(3*vect.z*r/Power(sqr(r),2))*sqr(actual_x) -
-                        vect.x*r/Power(sqr(r),3/2) - sqr(MeC_Hhat)*(vect.x*r/Power(sqr(r),3/2))*sqr(actual_x) -
-                        MeC_Hhat*(vect.z*r/sqr(r)) + (3*vect.z*r/Power(sqr(r),5/2))*actual_x*actual_z -
-                        MeC_Hhat*(3*vect.x*r/Power(sqr(r), 2))*actual_x*actual_z -
-                        sqr(MeC_Hhat)*(vect.z*r/Power(sqr(r),3/2))*actual_x*actual_z - sqr(MeC_Hhat)*vect.x;
+                   else begin // remap y -> -z and z -> y
+                     x:=-(-(3/2)*Hhat*Qcos2*sqr(actual_x)/(Pi*Power(sqr(r),(5/2))*M*c*E0) -
+                        (3/2)*Qsin2*sqr(actual_x)/(Pi*Power(sqr(r),2)*E0) +
+                        (1/2)*Hhat*Qcos2/(Pi*Power(sqr(r),(3/2))*M*c*E0) +
+                        (1/2)*Qcos2*M*c*sqr(actual_x)/(Pi*Power(sqr(r),(3/2))*E0*Hhat) +
+                        (1/2)*Qsin2/(Pi*sqr(r)*E0) -
+                        (3/2)*Hhat*Qsin2*actual_z*actual_x/(Pi*Power(sqr(r),(5/2))*M*c*E0) +
+                        (3/2)*Qcos2*actual_x*actual_z/(Pi*Power(sqr(r),2)*E0) +
+                        (1/2)*Qsin2*M*c*actual_x*actual_z/(Pi*Power(sqr(r),(3/2))*E0*Hhat) +
+                        (1/2)*Qcos2*M*c/(Pi*r*E0*Hhat));
 
-                     y:=(3*vect.x*r/Power(sqr(r),5/2))*actual_x*actual_y + MeC_Hhat*(3*vect.z*r/Power(sqr(r),2))*actual_x*actual_y -
-                        sqr(MeC_Hhat)*(vect.x*r/Power(sqr(r),3/2))*actual_x*actual_y + (3*vect.z*r/Power(sqr(r),5/2))*actual_z*actual_y -
-                        MeC_Hhat*(3*vect.x*r/Power(sqr(r), 2))*actual_z*actual_y - sqr(MeC_Hhat)*(vect.z*r/Power(sqr(r),3/2))*actual_z*actual_y;
+                     y:=-(-(3/2)*Hhat*Qcos2*actual_x*actual_y/(Pi*Power(sqr(r),(5/2))*M*c*E0) -
+                        (3/2)*Qsin2*actual_y*actual_x/(Pi*Power(sqr(r),2)*E0) +
+                        (1/2)*Qcos2*M*c*actual_y*actual_x/(Pi*Power(sqr(r),(3/2))*E0*Hhat) -
+                        (3/2)*Hhat*Qsin2*actual_z*actual_y/(Pi*Power(sqr(r),(5/2))*M*c*E0) +
+                        (3/2)*Qcos2*actual_y*actual_z/(Pi*Power(sqr(r),2)*E0) +
+                        (1/2)*Qsin2*M*c*actual_y*actual_z/(Pi*Power(sqr(r),(3/2))*E0*Hhat));
 
-                     z:=-((3*vect.x*r/Power(sqr(r),5/2))*actual_x*actual_z + MeC_Hhat*(3*vect.z*r/Power(sqr(r),2))*actual_x*actual_z -
-                        sqr(MeC_Hhat)*(vect.x*r/Power(sqr(r),3/2))*actual_x*actual_z + (3*vect.z*r/Power(sqr(r),5/2))*sqr(actual_z) -
-                        MeC_Hhat*(3*vect.x*r/Power(sqr(r), 2))*sqr(actual_z) - (vect.z*r/Power(sqr(r),3/2)) -
-                        sqr(MeC_Hhat)*(vect.z*r/Power(sqr(r),3/2))*sqr(actual_z) + MeC_Hhat*(vect.x*r/sqr(r)) - sqr(MeC_Hhat)*vect.z);
+                     z:=-(-(3/2)*Hhat*Qcos2*actual_x*actual_z/(Pi*Power(sqr(r),(5/2))*M*c*E0) -
+                        (3/2)*Qsin2*actual_z*actual_x/(Pi*Power(sqr(r),2)*E0) +
+                        (1/2)*Qcos2*M*c*actual_z*actual_x/(Pi*Power(sqr(r),(3/2))*E0*Hhat) -
+                        (3/2)*Hhat*Qsin2*sqr(actual_z)/(Pi*Power(sqr(r),(5/2))*M*c*E0) +
+                        (3/2)*Qcos2*sqr(actual_z)/(Pi*Power(sqr(r),2)*E0) +
+                        (1/2)*Hhat*Qsin2/(Pi*Power(sqr(r),(3/2))*M*c*E0) +
+                        (1/2)*Qsin2*M*c*sqr(actual_z)/(Pi*Power(sqr(r),(3/2))*E0*Hhat) -
+                        (1/2)*Qcos2/(Pi*sqr(r)*E0) +
+                        (1/2)*Qsin2*M*c/(Pi*r*E0*Hhat));
                    end;
                  end;
                end;
@@ -2862,36 +2892,46 @@ begin
                    z:=particle_1_2_B[xpos,ypos,zpos].z;
                  end
                  else begin
-                   // Get the Psi (Y) vector
-                   vect := points[NewScreen]^[xpos,ypos,zpos].PsiVect;
-
                    // From Maple calculations:
                    //
                    // B = Curl(A)
                    //
-                   if neutron or neutrino then begin
-                     // Also had to make cos terms negative
-                     Qsin1 := sqrt(4/5)*abs(ProtonCharge)*sin(theta_const*(-Time - r/(SpeedOfLight - x_velocity)));
-                     Qcos1 := sqrt(4/5)*abs(ProtonCharge)*cos(theta_const*(-Time - r/(SpeedOfLight - x_velocity)));
-                     Qsin2 := sqrt(4/5)*abs(ProtonCharge)*sin(theta_const*(-Time + r/(SpeedOfLight - x_velocity)));
-                     Qcos2 := sqrt(4/5)*abs(ProtonCharge)*cos(theta_const*(-Time + r/(SpeedOfLight - x_velocity)));
+                   if electron then
+                     M:=ElectronMass
+                   else if proton then
+                     M:=ProtonMass
+                   else if neutron then
+                     M:=NeutronMass
+                   else if neutrino then
+                     M:=ElectronNeutrinoMass;
 
-                     c:=SpeedOfLight;
-                     E0:=Permittivity;
+                   charge_sign:=1;
+                   charge_factor:=1;
 
-                     if neutron then
-                       M:=NeutronMass
-                     else
-                       M:=ElectronNeutrinoMass;
+                   if electron then begin
+                     charge_sign:=sign(ElectronCharge);
+                     charge_factor:=charge_sign;
+                   end
+                   else if neutron or neutrino then begin
+                     charge_sign:=-1;
+                     charge_factor:=sqrt(4/5);
                    end;
+
+                   Qsin1 := -charge_factor*UnitaryCharge*sin(theta_const*(Time - charge_sign*r/(SpeedOfLight - x_velocity)));
+                   Qcos1 := -charge_factor*UnitaryCharge*cos(theta_const*(Time - charge_sign*r/(SpeedOfLight - x_velocity)));
+                   Qsin2 := -charge_factor*UnitaryCharge*sin(theta_const*(Time + charge_sign*r/(SpeedOfLight - x_velocity)));
+                   Qcos2 := -charge_factor*UnitaryCharge*cos(theta_const*(Time + charge_sign*r/(SpeedOfLight - x_velocity)));
+
+                   c:=SpeedOfLight;
+                   E0:=Permittivity;
 
                    if ( ViewTop ) then begin
                      if neutron or neutrino then begin
-                       x:=-(5/8)*Qcos1/(c*Pi*Power(sqr(r),(3/2))*E0) +
+                       x:=-(5/8)*Qcos1/(c*Pi*Power(sqr(r),(3/2))*E0) -
                            (5/8)*Qsin1*M/(Pi*sqr(r)*E0*Hhat);
 
-                       y:=(1/sqr(c))*( (1/4)*c*Qsin1/(Pi*Power(sqr(r),(3/2))*E0) +
-                                       (1/4)*sqr(c)*Qcos1*M/(Pi*sqr(r)*E0*Hhat) +
+                       y:=(1/sqr(c))*(-(1/4)*c*Qsin1/(Pi*Power(sqr(r),(3/2))*E0) +
+                                       (1/4)*sqr(c)*Qcos1*M/(Pi*sqr(r)*E0*Hhat) -
                                        (3/8)*c*Qsin2/(Pi*Power(sqr(r),(3/2))*E0) -
                                        (3/8)*sqr(c)*Qcos2*M/(Pi*sqr(r)*E0*Hhat));
 
@@ -2905,51 +2945,52 @@ begin
                      // B = [(m/(Hhat*r^2))*Y_x*z + (m^2c/(r*Hhat^2))*Y_y*z,
                      //      (m/(Hhat*r^2))*Y_y*z - (m^2c/(r*Hhat^2)*Y_x*z,
                      //      -(m/(Hhat*r^2))*Y_x*x - (m^2c/(r*Hhat^2))*Y_y*x - (m/(Hhat*r^2))*Y_y*y + (m^2c/(r*Hhat^2)*Y_x*y]
-                     else if proton then begin
-                       x:=(ProtonMass/(Hhat*sqr(r)))*vect.x*actual_z + (sqr(ProtonMass)*SpeedOfLight/(r*sqr(Hhat)))*vect.y*actual_z;
-                       y:=(ProtonMass/(Hhat*sqr(r)))*vect.y*actual_z - (sqr(ProtonMass)*SpeedOfLight/(r*sqr(Hhat)))*vect.x*actual_z;
-                       z:=-(-(ProtonMass/(Hhat*sqr(r)))*vect.x*actual_x - (sqr(ProtonMass)*SpeedOfLight/(r*sqr(Hhat)))*vect.y*actual_x -
-                            (ProtonMass/(Hhat*sqr(r)))*vect.y*actual_y + (sqr(ProtonMass)*SpeedOfLight/(r*sqr(Hhat)))*vect.x*actual_y);
-                     end
                      else begin
-                       x:=(ElectronMass/(Hhat*sqr(r)))*vect.x*actual_z + (sqr(ElectronMass)*SpeedOfLight/(r*sqr(Hhat)))*vect.y*actual_z;
-                       y:=(ElectronMass/(Hhat*sqr(r)))*vect.y*actual_z - (sqr(ElectronMass)*SpeedOfLight/(r*sqr(Hhat)))*vect.x*actual_z;
-                       z:=-(-(ElectronMass/(Hhat*sqr(r)))*vect.x*actual_x - (sqr(ElectronMass)*SpeedOfLight/(r*sqr(Hhat)))*vect.y*actual_x -
-                            (ElectronMass/(Hhat*sqr(r)))*vect.y*actual_y + (sqr(ElectronMass)*SpeedOfLight/(r*sqr(Hhat)))*vect.x*actual_y);
+                       x:=-((1/2)*Qcos2*actual_z/(c*Pi*Power(sqr(r),(3/2))*E0) +
+                            (1/2)*Qsin2*M*actual_z/(Pi*sqr(r)*E0*Hhat));
+
+                       y:=-((1/2)*Qsin2*actual_z/(c*Pi*Power(sqr(r),(3/2))*E0) -
+                            (1/2)*Qcos2*M*actual_z/(Pi*sqr(r)*E0*Hhat));
+
+                       z:=-(-(1/2)*Qcos2*actual_x/(c*Pi*Power(sqr(r),(3/2))*E0) -
+                            (1/2)*Qsin2*M*actual_x/(Pi*sqr(r)*E0*Hhat) -
+                            (1/2)*Qsin2*actual_y/(c*Pi*Power(sqr(r),(3/2))*E0) +
+                            (1/2)*Qcos2*M*actual_y/(Pi*sqr(r)*E0*Hhat));
+
                      end;
                    end
                    else begin // remap y -> -z and z -> y
                      if neutron or neutrino then begin
-                       x:=-(5/8)*Qcos1/(c*Pi*Power(sqr(r),(3/2))*E0) +
+                       x:=-(5/8)*Qcos1/(c*Pi*Power(sqr(r),(3/2))*E0) -
                            (5/8)*Qsin1*M/(Pi*sqr(r)*E0*Hhat);
 
-                       z:=(1/sqr(c))*( (1/4)*c*Qsin1/(Pi*Power(sqr(r),(3/2))*E0) +
-                                       (1/4)*sqr(c)*Qcos1*M/(Pi*sqr(r)*E0*Hhat) +
+                       z:=(1/sqr(c))*(-(1/4)*c*Qsin1/(Pi*Power(sqr(r),(3/2))*E0) +
+                                       (1/4)*sqr(c)*Qcos1*M/(Pi*sqr(r)*E0*Hhat) -
                                        (3/8)*c*Qsin2/(Pi*Power(sqr(r),(3/2))*E0) -
                                        (3/8)*sqr(c)*Qcos2*M/(Pi*sqr(r)*E0*Hhat));
 
-                       y:=-(x*actual_x + z*actual_z);
+                       y:=-(x*actual_x + y*actual_z);
 
                        x:=x*actual_y;
                        z:=z*actual_y;
                      end
-                     else if proton then begin  // remap y -> z and z -> y
-                       x:=(ProtonMass/(Hhat*sqr(r)))*vect.x*actual_y + (sqr(ProtonMass)*SpeedOfLight/(r*sqr(Hhat)))*vect.z*actual_y;
-                       y:=-(-(ProtonMass/(Hhat*sqr(r)))*vect.x*actual_x - (sqr(ProtonMass)*SpeedOfLight/(r*sqr(Hhat)))*vect.z*actual_x -
-                            (ProtonMass/(Hhat*sqr(r)))*vect.z*actual_z + (sqr(ProtonMass)*SpeedOfLight/(r*sqr(Hhat)))*vect.x*actual_z);
-                       z:=(ProtonMass/(Hhat*sqr(r)))*vect.z*actual_y - (sqr(ProtonMass)*SpeedOfLight/(r*sqr(Hhat)))*vect.x*actual_y;
-                     end
-                     else begin
-                       x:=(ElectronMass/(Hhat*sqr(r)))*vect.x*actual_y + (sqr(ElectronMass)*SpeedOfLight/(r*sqr(Hhat)))*vect.z*actual_y;
-                       y:=-(-(ElectronMass/(Hhat*sqr(r)))*vect.x*actual_x - (sqr(ElectronMass)*SpeedOfLight/(r*sqr(Hhat)))*vect.z*actual_x -
-                            (ElectronMass/(Hhat*sqr(r)))*vect.z*actual_z + (sqr(ElectronMass)*SpeedOfLight/(r*sqr(Hhat)))*vect.x*actual_z);
-                       z:=(ElectronMass/(Hhat*sqr(r)))*vect.z*actual_y - (sqr(ElectronMass)*SpeedOfLight/(r*sqr(Hhat)))*vect.x*actual_y;
+                     else begin  // remap y -> -z and z -> -y
+                       x:= ((1/2)*Qcos2*actual_y/(c*Pi*Power(sqr(r),(3/2))*E0) +
+                            (1/2)*Qsin2*M*actual_y/(Pi*sqr(r)*E0*Hhat));
+
+                       y:= ((1/2)*Qcos2*actual_x/(c*Pi*Power(sqr(r),(3/2))*E0) -
+                            (1/2)*Qsin2*M*actual_x/(Pi*sqr(r)*E0*Hhat) -
+                            (1/2)*Qsin2*actual_z/(c*Pi*Power(sqr(r),(3/2))*E0) -
+                            (1/2)*Qcos2*M*actual_z/(Pi*sqr(r)*E0*Hhat));
+
+                       z:= ((1/2)*Qsin2*actual_y/(c*Pi*Power(sqr(r),(3/2))*E0) -
+                            (1/2)*Qcos2*M*actual_y/(Pi*sqr(r)*E0*Hhat));
                      end;
                    end;
 
                    // if the second particle is a positron, we must reverse the direction of the magnetic field vector, as
                    // the above equation is for an electron.
-                   if (pass = 2) and (positron or proton) then begin
+                   if ((maxpass = 1) or ((maxpass > 1) and (pass = 2))) and (positron or proton) then begin
                      x:=-x;
                      y:=-y;
                      z:=-z;
