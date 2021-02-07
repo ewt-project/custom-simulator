@@ -581,6 +581,8 @@ const
   ProtonCharge=UnitaryCharge;
   NeutronCharge=0;
 
+  PositronMass=9.1093835611E-31;   // (8.187105650638658873144497804e-14 Joules)
+
   ElectronMass=9.1093835611E-31;   // (8.187105650638658873144497804e-14 Joules)
   ElectronComptonWavelength=2*Pi*Hhat/(ElectronMass*SpeedOfLight); // 2.4263097661e-12
   ElectronComptonRadius=ElectronComptonWavelength/(2*Pi);  // 3.8615919275e-13
@@ -1803,6 +1805,8 @@ begin
                // get actual distance in metres
                r2:=sqrt( sqr((xpos - particle2_x)*dx) + sqr(y*dy) + sqr(z*dz) );
                if ( r2 < r_lower_limit ) then r2:=r_lower_limit;   // prevent divide by zero errors
+
+               r_gamma:=1;
              end
              else begin
                r:=sqrt( sqr(x*dx) + sqr(y*dy) + sqr(z*dz) );
@@ -1842,127 +1846,127 @@ begin
                3: begin  // if two electrons being modeled
                    theta1:=particle1_spin*theta_const*(Time - r1/SpeedOfLight);
                    theta2:=particle2_spin*theta_const*(Time - r2/SpeedOfLight);
-                   term1a:=sign(ElectronCharge) * delta/r1;
-                   term1b:=sign(ElectronCharge) * delta/r2;
+                   term1a:=delta/r1;
+                   term1b:=delta/r2;
                end;
 
                4: begin  // if two positrons being modeled
                    theta1:=particle1_spin*theta_const*(Time + r1/SpeedOfLight);
                    theta2:=particle2_spin*theta_const*(Time + r2/SpeedOfLight);
-                   term1a:=sign(PositronCharge) * delta/r1;
-                   term1b:=sign(PositronCharge) * delta/r2;
+                   term1a:=delta/r1;
+                   term1b:=abs(delta)/r2;
                end;
 
                5: begin  // if an electron and a positron being modeled
                    theta1:=particle1_spin*theta_const*(Time - r1/SpeedOfLight);
                    theta2:=particle2_spin*theta_const*(Time + r2/SpeedOfLight);
-                   term1a:=sign(ElectronCharge) * delta/r1;
-                   term1b:=sign(PositronCharge) * delta/r2;
+                   term1a:=delta/r1;
+                   term1b:=abs(delta)/r2;
                end;
 
                6: begin  // if two electrons being modeled orthogonally
                    theta1:=particle1_spin*theta_const*(Time - r1/SpeedOfLight);
                    theta2:=particle2_spin*theta_const*(Time - r2/SpeedOfLight);
-                   term1a:=sign(ElectronCharge) * delta/r1;
-                   term1b:=sign(ElectronCharge) * delta/r2;
+                   term1a:=delta/r1;
+                   term1b:=delta/r2;
                end;
 
                7: begin  // if two positrons being modeled orthogonally
                    theta1:=particle1_spin*theta_const*(Time + r1/SpeedOfLight);
                    theta2:=particle2_spin*theta_const*(Time + r2/SpeedOfLight);
-                   term1a:=sign(PositronCharge) * delta/r1;
-                   term1b:=sign(PositronCharge) * delta/r2;
+                   term1a:=abs(delta)/r1;
+                   term1b:=abs(delta)/r2;
                end;
 
                8: begin  // if an electron and a positron being modeled orthogonally
                    theta1:=particle1_spin*theta_const*(Time - r1/SpeedOfLight);
                    theta2:=particle2_spin*theta_const*(Time + r2/SpeedOfLight);
-                   term1a:=sign(ElectronCharge) * delta/r1;
-                   term1b:=sign(PositronCharge) * delta/r2;
+                   term1a:=delta/r1;
+                   term1b:=abs(delta)/r2;
                end;
 
                9: begin  // if two electrons being modeled orthogonally - reversed 2nd axis
                    theta1:=particle1_spin*theta_const*(Time - r1/SpeedOfLight);
                    theta2:=particle2_spin*theta_const*(Time - r2/SpeedOfLight);
-                   term1a:=sign(ElectronCharge) * delta/r1;
-                   term1b:=sign(ElectronCharge) * delta/r2;
+                   term1a:=delta/r1;
+                   term1b:=delta/r2;
                end;
 
                10: begin  // if two positrons being modeled orthogonally - reversed 2nd axis
                    theta1:=particle1_spin*theta_const*(Time + r1/SpeedOfLight);
                    theta2:=particle2_spin*theta_const*(Time + r2/SpeedOfLight);
-                   term1a:=sign(PositronCharge) * delta/r1;
-                   term1b:=sign(PositronCharge) * delta/r2;
+                   term1a:=abs(delta)/r1;
+                   term1b:=abs(delta)/r2;
                end;
 
                11: begin  // if an electron and a positron being modeled orthogonally - reversed 2nd axis
                    theta1:=particle1_spin*theta_const*(Time - r1/SpeedOfLight);
                    theta2:=particle2_spin*theta_const*(Time + r2/SpeedOfLight);
-                   term1a:=sign(ElectronCharge) * delta/r1;
-                   term1b:=sign(PositronCharge) * delta/r2;
+                   term1a:=delta/r1;
+                   term1b:=abs(delta)/r2;
                end;
 
                12: begin  // if two electrons being modeled spins end to end
                    theta1:=particle1_spin*theta_const*(Time - r1/SpeedOfLight);
                    theta2:=particle2_spin*theta_const*(Time - r2/SpeedOfLight);
-                   term1a:=sign(ElectronCharge) * delta/r1;
-                   term1b:=sign(ElectronCharge) * delta/r2;
+                   term1a:=delta/r1;
+                   term1b:=delta/r2;
                end;
 
                13: begin  // if two positrons being modeled spins end to end
                    theta1:=particle1_spin*theta_const*(Time + r1/SpeedOfLight);
                    theta2:=particle2_spin*theta_const*(Time + r2/SpeedOfLight);
-                   term1a:=sign(PositronCharge) * delta/r1;
-                   term1b:=sign(PositronCharge) * delta/r2;
+                   term1a:=abs(delta)/r1;
+                   term1b:=abs(delta)/r2;
                end;
 
                14: begin  // if an electron and a positron being modeled spins end to end
                    theta1:=particle1_spin*theta_const*(Time - r1/SpeedOfLight);
                    theta2:=particle2_spin*theta_const*(Time + r2/SpeedOfLight);
-                   term1a:=sign(ElectronCharge) * delta/r1;
-                   term1b:=sign(PositronCharge) * delta/r2;
+                   term1a:=delta/r1;
+                   term1b:=abs(delta)/r2;
                end;
 
                15: begin  // if two electrons being modeled spins end to end - reversed 2nd axis
                    theta1:=particle1_spin*theta_const*(Time - r1/SpeedOfLight);
                    theta2:=particle2_spin*theta_const*(Time - r2/SpeedOfLight);
-                   term1a:=sign(ElectronCharge) * delta/r1;
-                   term1b:=sign(ElectronCharge) * delta/r2;
+                   term1a:=delta/r1;
+                   term1b:=delta/r2;
                end;
 
                16: begin  // if two positrons being modeled spins end to end - reversed 2nd axis
                    theta1:=particle1_spin*theta_const*(Time + r1/SpeedOfLight);
                    theta2:=particle2_spin*theta_const*(Time + r2/SpeedOfLight);
-                   term1a:=sign(PositronCharge) * delta/r1;
-                   term1b:=sign(PositronCharge) * delta/r2;
+                   term1a:=abs(delta)/r1;
+                   term1b:=abs(delta)/r2;
                end;
 
                17: begin  // if an electron and a positron being modeled spins end to end - reversed 2nd axis
                    theta1:=particle1_spin*theta_const*(Time - r1/SpeedOfLight);
                    theta2:=particle2_spin*theta_const*(Time + r2/SpeedOfLight);
-                   term1a:=sign(ElectronCharge) * delta/r1;
-                   term1b:=sign(PositronCharge) * delta/r2;
+                   term1a:=delta/r1;
+                   term1b:=abs(delta)/r2;
                end;
 
                18: begin  // if two electrons being modeled spins opposite - reversed 2nd spin axis
                    theta1:=particle1_spin*theta_const*(Time - r1/SpeedOfLight);
                    theta2:=particle2_spin*theta_const*(Time - r2/SpeedOfLight);
-                   term1a:=sign(ElectronCharge) * delta/r1;
-                   term1b:=sign(ElectronCharge) * delta/r2;
+                   term1a:=delta/r1;
+                   term1b:=delta/r2;
                end;
 
                19: begin  // if two positrons being modeled spins opposite - reversed 2nd spin axis
                    theta1:=particle1_spin*theta_const*(Time + r1/SpeedOfLight);
                    theta2:=particle2_spin*theta_const*(Time + r2/SpeedOfLight);
-                   term1a:=sign(PositronCharge) * delta/r1;
-                   term1b:=sign(PositronCharge) * delta/r2;
+                   term1a:=abs(delta)/r1;
+                   term1b:=abs(delta)/r2;
                end;
 
                20: begin  // if an electron and a positron being modeled spins opposite - reversed 2nd spin axis
                    theta1:=particle1_spin*theta_const*(Time - r1/SpeedOfLight);
                    theta2:=particle2_spin*theta_const*(Time + r2/SpeedOfLight);
-                   term1a:=sign(ElectronCharge) * delta/r1;
-                   term1b:=sign(PositronCharge) * delta/r2;
+                   term1a:=delta/r1;
+                   term1b:=abs(delta)/r2;
                end;
 
                21: begin  // if electron OUT wave being modeled
@@ -2614,6 +2618,8 @@ begin
                with points[NewScreen]^[xpos,ypos,zpos].Electric do begin
                  if electron then
                    M:=ElectronMass
+                 else if positron then
+                   M:=PositronMass
                  else if proton then
                    M:=ProtonMass
                  else if neutron then
@@ -2853,6 +2859,8 @@ begin
                  else begin
                    if electron then
                      M:=ElectronMass
+                   else if positron then
+                     M:=PositronMass
                    else if proton then
                      M:=ProtonMass
                    else if neutron then
