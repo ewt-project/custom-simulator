@@ -308,6 +308,8 @@ type            {Type declaration for a vector resolved into x,y & z components}
     Start24: TRadioButton;
     Start25: TRadioButton;
     Start26: TRadioButton;
+    Start27: TRadioButton;
+    Start28: TRadioButton;
     procedure FormCreate(Sender: TObject);
     procedure Start1Click(Sender: TObject);
     procedure Start2Click(Sender: TObject);
@@ -348,6 +350,8 @@ type            {Type declaration for a vector resolved into x,y & z components}
     procedure Start24Click(Sender: TObject);
     procedure Start25Click(Sender: TObject);
     procedure Start26Click(Sender: TObject);
+    procedure Start27Click(Sender: TObject);
+    procedure Start28Click(Sender: TObject);
     procedure TimeFreezeClick(Sender: TObject);
     procedure ZPlaneChange(Sender: TObject);
     procedure DisplayLevelChange(Sender: TObject);
@@ -534,7 +538,7 @@ const
                             (1,1,0),
                             (0,0,0)));
 
-  StartOptionCaptions : array[1..25] of String = (
+  StartOptionCaptions : array[1..28] of String = (
                                   ('1: e'),
                                   ('2: p'),
                                   ('3: ee^^'),
@@ -559,7 +563,10 @@ const
                                   ('22: e IN'),
                                   ('23: e BOTH'),
                                   ('24: Proton'),
-                                  ('25: Neutron')
+                                  ('25: Neutron'),
+                                  ('26: Neutrino'),
+                                  ('27: U Quark'),
+                                  ('28: D Quark')
                                   );
 const
 
@@ -602,6 +609,10 @@ const
   ElectronNeutrinoComptonWavelength=2*Pi*Hhat/(ElectronNeutrinoMass*SpeedOfLight);  // 1.8774260824e-07
   ElectronNeutrinoComptonRadius=ElectronNeutrinoComptonWavelength/(2*Pi);  // 2.988016413e-08
   ElectronNeutrinoClassicalRadius=alpha*ElectronNeutrinoComptonRadius;  // 2.1804609249e-10
+
+  UpQuarkMass=((1/4)*ProtonMass);
+
+  DownQuarkMass=((1/2)*ProtonMass);
 
   Max_E=0;  {Max value of Electric field to allow per pixel - Volts/m (0 value disables it)}
   Max_B=0;  {Max value of Magnetic field to allow per pixel - Tesla (0 value disables it)}
@@ -876,6 +887,8 @@ begin
   Start24.Checked:=false;
   Start25.Checked:=false;
   Start26.Checked:=false;
+  Start27.Checked:=false;
+  Start28.Checked:=false;
 
   case StartOption of
    1: begin  // if electron being modelled
@@ -980,6 +993,14 @@ begin
 
    26: begin  // if neutrino being modelled
       Start26.Checked:=true;
+      end;
+
+   27: begin  // if Up Quark being modelled
+      Start27.Checked:=true;
+      end;
+
+   28: begin  // if Down Quark being modelled
+      Start28.Checked:=true;
       end;
   end;
 
@@ -1171,7 +1192,7 @@ var
   I: Integer;
   ShellThickness: Extended;
   dist: longint;
-  electron, positron, proton, neutron, neutrino, two_particle_composite: boolean;
+  electron, positron, proton, neutron, neutrino, quark_up, quark_down: boolean;
   orthogonal_particles: boolean;
   particles_end_to_end: boolean;
   particle1_spin, particle2_spin, saved_sign: integer;
@@ -1189,7 +1210,7 @@ var
   ElecFieldGradDivPsi_SignedHalf_SumX, ElecFieldCurlCurlPsi_SignedHalf_SumX :extended;
   c1,c2,c3,A,DistFromCenter,ExpectedAccel,E_Energy_Sum,B_Energy_Sum: Extended;
   field_stats: boolean;
-  sine_wave_sum, neutron_quarks, neutrino_quarklets: boolean;
+  sine_wave_sum, neutrino_quarklets: boolean;
   progress, progress_inc, r_contracted, x_contracted, x_velocity, gamma, r_gamma, charge_sign, charge_factor: single;
   Qsin1, Qcos1, Qsin2, Qcos2, M, c, E0: extended;
 
@@ -1262,7 +1283,8 @@ begin
   neutron:=false;
   neutrino:=false;
   neutrino_quarklets:=false;
-  two_particle_composite:=false;
+  quark_up:=false;
+  quark_down:=false;
   r_lower_limit:=ElectronComptonRadius;
 
   case StartOption of
@@ -1444,10 +1466,7 @@ begin
        positron:=false;
        neutron:=true;
        r_lower_limit:=NeutronComptonRadius;
-//       two_particle_composite:=true;
-       two_particle_composite:=false;
-       neutron_quarks:=true;
-       sine_wave_sum:=neutron_quarks;
+       sine_wave_sum:=true;
        two_particles:=false;
        maxpass:=1;
       end;
@@ -1457,9 +1476,30 @@ begin
        positron:=false;
        neutrino:=true;
        r_lower_limit:=ElectronNeutrinoComptonRadius;
-       two_particle_composite:=false;
        neutrino_quarklets:=true;
        sine_wave_sum:=neutrino_quarklets;
+       two_particles:=false;
+       maxpass:=1;
+      end;
+
+   27: begin  // if Up Quark being modeled
+       electron:=false;
+       positron:=false;
+       proton:=false;
+       quark_up:=true;
+       r_lower_limit:=ProtonComptonRadius;
+       sine_wave_sum:=true;
+       two_particles:=false;
+       maxpass:=1;
+      end;
+
+   28: begin  // if Down Quark being modeled
+       electron:=false;
+       positron:=false;
+       proton:=false;
+       quark_down:=true;
+       r_lower_limit:=ProtonComptonRadius;
+       sine_wave_sum:=true;
        two_particles:=false;
        maxpass:=1;
       end;
@@ -1481,10 +1521,10 @@ begin
       HFormulaCheckBox.Enabled:=false;
     end;
 
-    if (proton or neutron) then begin
+    if (proton or neutron or quark_up or quark_down) then begin
       // Note: at 270x270x270 GridSize, an actual width of 4E-14 (11 grid points per Compton wavelength) gives a very accurate energy calculation
       ActualGridWidth.Text:=FloatToStrf(1.5E-14,ffExponent,5,2); {display actual size in metres that grid represents}
-      if (proton or neutron_quarks) then RateOfTime.Position:=3;
+      RateOfTime.Position:=3;
       ProcSetGridGlobals(Self);
       DoUpdate:=true;
       Restart:=true;
@@ -1630,28 +1670,33 @@ begin
          theta_const:=sign(ProtonCharge)*( ProtonMass * sqr(SpeedOfLight) ) / Hhat;
        end
        else if neutron then begin
-         if two_particle_composite then begin
-           SpinConstant:=( Hhat / NeutronMass ); // Metres^2/(Radians*Second)
-           delta1 := ( ProtonCharge * Hhat ) / ( 2 * Pi * ProtonMass * SpeedOfLight * Permittivity );
-           delta2 := ( ElectronCharge * Hhat ) / ( 2 * Pi * ElectronMass * SpeedOfLight * Permittivity );
+         SpinConstant:=( Hhat / NeutronMass ); // Metres^2/(Radians*Second)
+         delta := ( UnitaryCharge * Hhat ) / ( 2 * Pi * NeutronMass * SpeedOfLight * Permittivity );
 
-           // theta_const is in Radians/Second ( i.e. the same as solving E = hf for f, where E=mc^2, and h=2*Pi*Hhat,
-           // then converting f to angular frequency w, via w = 2*Pi*f )
-           // ( theta_const could be, equivalently : - c^2/SpinConstant )
-           theta_const1:=sign(ProtonCharge)*( ProtonMass * sqr(SpeedOfLight) ) / Hhat;
-           theta_const2:=sign(ElectronCharge)*( ElectronMass * sqr(SpeedOfLight) ) / Hhat;
-         end
-         else begin
-           SpinConstant:=( Hhat / NeutronMass ); // Metres^2/(Radians*Second)
-           delta := ( UnitaryCharge * Hhat ) / ( 2 * Pi * NeutronMass * SpeedOfLight * Permittivity );
-
-           // theta_const is in Radians/Second ( i.e. the same as solving E = hf for f, where E=mc^2, and h=2*Pi*Hhat,
-           // then converting f to angular frequency w, via w = 2*Pi*f )
-           // ( theta_const could be, equivalently : - c^2/SpinConstant )
-           theta_const:=( NeutronMass * sqr(SpeedOfLight) ) / Hhat;
-         end;
+         // theta_const is in Radians/Second ( i.e. the same as solving E = hf for f, where E=mc^2, and h=2*Pi*Hhat,
+         // then converting f to angular frequency w, via w = 2*Pi*f )
+         // ( theta_const could be, equivalently : - c^2/SpinConstant )
+         theta_const:=( NeutronMass * sqr(SpeedOfLight) ) / Hhat;
        end
-       else begin
+       else if quark_up then begin
+         SpinConstant:=( Hhat / ProtonMass ); // Metres^2/(Radians*Second)
+         delta := ( (2/3)*ProtonCharge * Hhat ) / ( 2 * Pi * ProtonMass * SpeedOfLight * Permittivity );
+
+         // theta_const is in Radians/Second ( i.e. the same as solving E = hf for f, where E=mc^2, and h=2*Pi*Hhat,
+         // then converting f to angular frequency w, via w = 2*Pi*f )
+         // ( theta_const could be, equivalently : - c^2/SpinConstant )
+         theta_const:=sign(ProtonCharge)*( ProtonMass * sqr(SpeedOfLight) ) / Hhat;
+       end
+       else if quark_down then begin
+         SpinConstant:=( Hhat / ProtonMass ); // Metres^2/(Radians*Second)
+         delta := ( (1/3)*ProtonCharge * Hhat ) / ( 2 * Pi * ProtonMass * SpeedOfLight * Permittivity );
+
+         // theta_const is in Radians/Second ( i.e. the same as solving E = hf for f, where E=mc^2, and h=2*Pi*Hhat,
+         // then converting f to angular frequency w, via w = 2*Pi*f )
+         // ( theta_const could be, equivalently : - c^2/SpinConstant )
+         theta_const:=sign(ProtonCharge)*( ProtonMass * sqr(SpeedOfLight) ) / Hhat;
+       end
+       else begin // electrons and/or positrons
          SpinConstant:=( Hhat / ElectronMass ); // Metres^2/(Radians*Second)
          delta := ( ElectronCharge * Hhat ) / ( 2 * Pi * ElectronMass * SpeedOfLight * Permittivity );
 
@@ -1712,15 +1757,12 @@ begin
          Etotal:=ElectronNeutrinoMass*sqr(SpeedOfLight)
        else if proton then
          Etotal:=(Permeability*sqr(SpeedOfLight) + 1/Permittivity)*sqr(ProtonCharge)/(8*Pi*ProtonClassicalRadius)
-       else if neutron then begin
-         if two_particle_composite then begin
-           Etotal:=(Permeability*sqr(SpeedOfLight) + 1/Permittivity)*sqr(ProtonCharge)/(8*Pi*ProtonClassicalRadius);
-           Etotal:=Etotal + (Permeability*sqr(SpeedOfLight) + 1/Permittivity)*sqr(ElectronCharge)/(8*Pi*ElectronClassicalRadius);
-         end
-         else begin
-           Etotal:=NeutronMass*sqr(SpeedOfLight)
-         end;
-       end
+       else if neutron then
+         Etotal:=NeutronMass*sqr(SpeedOfLight)
+       else if quark_up then
+         Etotal:=UpQuarkMass*sqr(SpeedOfLight)
+       else if quark_down then
+         Etotal:=DownQuarkMass*sqr(SpeedOfLight)
        else
          Etotal:=(Permeability*sqr(SpeedOfLight) + 1/Permittivity)*sqr(ElectronCharge)/(8*Pi*ElectronClassicalRadius);
 
@@ -1854,14 +1896,14 @@ begin
                    theta1:=particle1_spin*theta_const*(Time + r1/SpeedOfLight);
                    theta2:=particle2_spin*theta_const*(Time + r2/SpeedOfLight);
                    term1a:=delta/r1;
-                   term1b:=abs(delta)/r2;
+                   term1b:=sign(PositronCharge) * abs(delta)/r2;
                end;
 
                5: begin  // if an electron and a positron being modeled
                    theta1:=particle1_spin*theta_const*(Time - r1/SpeedOfLight);
                    theta2:=particle2_spin*theta_const*(Time + r2/SpeedOfLight);
                    term1a:=delta/r1;
-                   term1b:=abs(delta)/r2;
+                   term1b:=sign(PositronCharge) * abs(delta)/r2;
                end;
 
                6: begin  // if two electrons being modeled orthogonally
@@ -1874,15 +1916,15 @@ begin
                7: begin  // if two positrons being modeled orthogonally
                    theta1:=particle1_spin*theta_const*(Time + r1/SpeedOfLight);
                    theta2:=particle2_spin*theta_const*(Time + r2/SpeedOfLight);
-                   term1a:=abs(delta)/r1;
-                   term1b:=abs(delta)/r2;
+                   term1a:=sign(PositronCharge) * abs(delta)/r1;
+                   term1b:=sign(PositronCharge) * abs(delta)/r2;
                end;
 
                8: begin  // if an electron and a positron being modeled orthogonally
                    theta1:=particle1_spin*theta_const*(Time - r1/SpeedOfLight);
                    theta2:=particle2_spin*theta_const*(Time + r2/SpeedOfLight);
                    term1a:=delta/r1;
-                   term1b:=abs(delta)/r2;
+                   term1b:=sign(PositronCharge) * abs(delta)/r2;
                end;
 
                9: begin  // if two electrons being modeled orthogonally - reversed 2nd axis
@@ -1895,15 +1937,15 @@ begin
                10: begin  // if two positrons being modeled orthogonally - reversed 2nd axis
                    theta1:=particle1_spin*theta_const*(Time + r1/SpeedOfLight);
                    theta2:=particle2_spin*theta_const*(Time + r2/SpeedOfLight);
-                   term1a:=abs(delta)/r1;
-                   term1b:=abs(delta)/r2;
+                   term1a:=sign(PositronCharge) * abs(delta)/r1;
+                   term1b:=sign(PositronCharge) * abs(delta)/r2;
                end;
 
                11: begin  // if an electron and a positron being modeled orthogonally - reversed 2nd axis
                    theta1:=particle1_spin*theta_const*(Time - r1/SpeedOfLight);
                    theta2:=particle2_spin*theta_const*(Time + r2/SpeedOfLight);
                    term1a:=delta/r1;
-                   term1b:=abs(delta)/r2;
+                   term1b:=sign(PositronCharge) * abs(delta)/r2;
                end;
 
                12: begin  // if two electrons being modeled spins end to end
@@ -1916,15 +1958,15 @@ begin
                13: begin  // if two positrons being modeled spins end to end
                    theta1:=particle1_spin*theta_const*(Time + r1/SpeedOfLight);
                    theta2:=particle2_spin*theta_const*(Time + r2/SpeedOfLight);
-                   term1a:=abs(delta)/r1;
-                   term1b:=abs(delta)/r2;
+                   term1a:=sign(PositronCharge) * abs(delta)/r1;
+                   term1b:=sign(PositronCharge) * abs(delta)/r2;
                end;
 
                14: begin  // if an electron and a positron being modeled spins end to end
                    theta1:=particle1_spin*theta_const*(Time - r1/SpeedOfLight);
                    theta2:=particle2_spin*theta_const*(Time + r2/SpeedOfLight);
                    term1a:=delta/r1;
-                   term1b:=abs(delta)/r2;
+                   term1b:=sign(PositronCharge) * abs(delta)/r2;
                end;
 
                15: begin  // if two electrons being modeled spins end to end - reversed 2nd axis
@@ -1937,15 +1979,15 @@ begin
                16: begin  // if two positrons being modeled spins end to end - reversed 2nd axis
                    theta1:=particle1_spin*theta_const*(Time + r1/SpeedOfLight);
                    theta2:=particle2_spin*theta_const*(Time + r2/SpeedOfLight);
-                   term1a:=abs(delta)/r1;
-                   term1b:=abs(delta)/r2;
+                   term1a:=sign(PositronCharge) * abs(delta)/r1;
+                   term1b:=sign(PositronCharge) * abs(delta)/r2;
                end;
 
                17: begin  // if an electron and a positron being modeled spins end to end - reversed 2nd axis
                    theta1:=particle1_spin*theta_const*(Time - r1/SpeedOfLight);
                    theta2:=particle2_spin*theta_const*(Time + r2/SpeedOfLight);
                    term1a:=delta/r1;
-                   term1b:=abs(delta)/r2;
+                   term1b:=sign(PositronCharge) * abs(delta)/r2;
                end;
 
                18: begin  // if two electrons being modeled spins opposite - reversed 2nd spin axis
@@ -1958,15 +2000,15 @@ begin
                19: begin  // if two positrons being modeled spins opposite - reversed 2nd spin axis
                    theta1:=particle1_spin*theta_const*(Time + r1/SpeedOfLight);
                    theta2:=particle2_spin*theta_const*(Time + r2/SpeedOfLight);
-                   term1a:=abs(delta)/r1;
-                   term1b:=abs(delta)/r2;
+                   term1a:=sign(PositronCharge) * abs(delta)/r1;
+                   term1b:=sign(PositronCharge) * abs(delta)/r2;
                end;
 
                20: begin  // if an electron and a positron being modeled spins opposite - reversed 2nd spin axis
                    theta1:=particle1_spin*theta_const*(Time - r1/SpeedOfLight);
                    theta2:=particle2_spin*theta_const*(Time + r2/SpeedOfLight);
                    term1a:=delta/r1;
-                   term1b:=abs(delta)/r2;
+                   term1b:=sign(PositronCharge) * abs(delta)/r2;
                end;
 
                21: begin  // if electron OUT wave being modeled
@@ -2040,41 +2082,35 @@ begin
 
                24: begin  // if proton being modeled
                    theta:=theta_const*(Time + r/(SpeedOfLight + x_velocity));
+
+                   if FrameCount > 44 then begin
+                     CheckBox1.Checked:=false;
+                     save_frames:=false;
+                   end;
                end;
 
                25: begin  // if neutron being modeled
-                   if two_particle_composite then begin
-                     theta1:=theta_const1*(Time + r/(SpeedOfLight + x_velocity));
-                     theta2:=theta_const2*(Time - r/(SpeedOfLight + x_velocity));
-                     term1a:=sign(ProtonCharge) * delta1/r_gamma;
-                     term1b:=sign(ElectronCharge) * delta2/r_gamma;
-                   end
-                   else if neutron_quarks then begin
-                     // IN component of Proton wave-function  = 2 UP Quarks (IN)
-                     // OUT component of Proton wave-function = 1 DOWN Quark (OUT)
-                     //
-                     // In Neutron wave-function we have 1 UP & 2 DOWN Quarks, so:
-                     // Neutron wave components:  IN = IN(Proton)/2 + OUT(Proton)*2
+                   // IN component of Proton wave-function  = 2 UP Quarks (IN)
+                   // OUT component of Proton wave-function = 1 DOWN Quark (OUT)
+                   //
+                   // In Neutron wave-function we have 1 UP & 2 DOWN Quarks, so:
+                   // Neutron wave components:  IN = IN(Proton)/2 + OUT(Proton)*2
 
-                     // X coordinate terms
-                     term2:=0;
+                   // X coordinate terms
+                   term2:=0;
 
-                     // each IN/OUT wave component is only half the wave-function amplitude
-                     term2:=term2 + 2.0 * 0.5*Cos(theta_const*(-Time - r/(SpeedOfLight + x_velocity)));  // OUT   y2
-                     //term2:=term2 + 2.0 * 0.5*Cos(theta_const*(Time - r/(SpeedOfLight + x_velocity)));   // OUT   y1
-                     //term2:=term2 - 2.0 * 0.5*Cos(theta_const*(Time - r/(SpeedOfLight + x_velocity)));   // OUT   y5
-                     term2:=term2 + 0.5 * 0.5*Cos(theta_const*(-Time - r/(SpeedOfLight - x_velocity)));  // IN  y6
+                   // each IN/OUT wave component is only half the wave-function amplitude
+                   term2:=term2 + 2.0 * 0.5*Cos(theta_const*(-Time - r/(SpeedOfLight + x_velocity)));  // OUT   y2
+                   //term2:=term2 + 2.0 * 0.5*Cos(theta_const*(Time - r/(SpeedOfLight + x_velocity)));   // OUT   y1
+                   //term2:=term2 - 2.0 * 0.5*Cos(theta_const*(Time - r/(SpeedOfLight + x_velocity)));   // OUT   y5
+                   term2:=term2 + 0.5 * 0.5*Cos(theta_const*(-Time - r/(SpeedOfLight - x_velocity)));  // IN  y6
 
-                     // Y coordinate terms
-                     term3:=0;
-                     term3:=term3 - 0.5 * 0.5*Sin(theta_const*(Time - r/(SpeedOfLight - x_velocity)));   // IN  y7
-                     term3:=term3 - 0.5 * 0.5*Sin(theta_const*(-Time - r/(SpeedOfLight - x_velocity)));  // IN  y3
-                     term3:=term3 - 0.5 * 0.5*Sin(theta_const*(-Time - r/(SpeedOfLight - x_velocity)));  // IN  y8
-                     term3:=term3 + 2.0 * 0.5*Sin(theta_const*(Time - r/(SpeedOfLight + x_velocity)));   // OUT   y4
-                   end
-                   else begin
-                     theta:=theta_const*Time;
-                   end;
+                   // Y coordinate terms
+                   term3:=0;
+                   term3:=term3 - 0.5 * 0.5*Sin(theta_const*(Time - r/(SpeedOfLight - x_velocity)));   // IN  y7
+                   term3:=term3 - 0.5 * 0.5*Sin(theta_const*(-Time - r/(SpeedOfLight - x_velocity)));  // IN  y3
+                   term3:=term3 - 0.5 * 0.5*Sin(theta_const*(-Time - r/(SpeedOfLight - x_velocity)));  // IN  y8
+                   term3:=term3 + 2.0 * 0.5*Sin(theta_const*(Time - r/(SpeedOfLight + x_velocity)));   // OUT   y4
 
                    if FrameCount > 44 then begin
                      CheckBox1.Checked:=false;
@@ -2115,10 +2151,41 @@ begin
                     save_frames:=false;
                   end;
                end;
+
+               27: begin  // if Up Quark being modeled
+                 // X coordinate terms
+                 term2:=0;
+                 term2:=term2 + 0.25*Cos(theta_const*(-Time - r/(SpeedOfLight - x_velocity)));  // IN  y6/2
+
+                 // Y coordinate terms
+                 term3:=0;
+                 term3:=term3 - 0.5*Sin(theta_const*(-Time - r/(SpeedOfLight - x_velocity)));   // IN  y3
+                 term3:=term3 + 0.25*Sin(theta_const*(-Time + r/(SpeedOfLight - x_velocity)));  // IN  y7/2
+
+                 if FrameCount > 44 then begin
+                   CheckBox1.Checked:=false;
+                   save_frames:=false;
+                 end;
+               end;
+
+               28: begin  // if Down Quark being modeled
+                  // X coordinate terms
+                  term2:=0;
+                  term2:=term2 + 0.5*Cos(theta_const*(-Time - r/(SpeedOfLight + x_velocity)));   // OUT  y2
+
+                  // Y coordinate terms
+                  term3:=0;
+                  term3:=term3 - 0.5*Sin(theta_const*(-Time + r/(SpeedOfLight + x_velocity)));   // OUT  y4
+
+                 if FrameCount > 44 then begin
+                   CheckBox1.Checked:=false;
+                   save_frames:=false;
+                 end;
+               end;
              end;
 
              if not sine_wave_sum then begin
-               if (two_particles or two_particle_composite) then begin
+               if two_particles then begin
                  SinCos(theta1, term3a, term2a);
                  SinCos(theta2, term3b, term2b);
 
@@ -2140,7 +2207,7 @@ begin
                end;
              end;
 
-             if not (two_particles or two_particle_composite) then begin
+             if not two_particles then begin
                psi_x := term1 * term2;
                psi_y := term1 * term3;
                psi_z := 0;
@@ -2148,7 +2215,7 @@ begin
 
              // Assign values to x, y, z coordinates, depending on view from the top or side.
              with points[NewScreen]^[xpos,ypos,zpos].PsiVect do begin
-               if (two_particles or two_particle_composite) then begin
+               if two_particles then begin
                  if ( ViewTop ) then begin
                    if orthogonal_particles then begin
                      // x1' = x1
@@ -2284,7 +2351,11 @@ begin
                      else if proton then
                        ElectricPotential:=ElectricPotential + abs(particle1_spin)*ProtonCharge/(4*Pi*r1*Permittivity)
                      else if neutron then
-                       ElectricPotential:=ElectricPotential + abs(particle1_spin)*NeutronCharge/(4*Pi*r1*Permittivity);
+                       ElectricPotential:=ElectricPotential + abs(particle1_spin)*NeutronCharge/(4*Pi*r1*Permittivity)
+                     else if quark_up then
+                       ElectricPotential:=ElectricPotential + abs(particle1_spin)*(2/3)*ProtonCharge/(4*Pi*r1*Permittivity)
+                     else if quark_down then
+                       ElectricPotential:=ElectricPotential + abs(particle1_spin)*(1/3)*ProtonCharge/(4*Pi*r1*Permittivity);
                    end;
 
                    if (pass=2) or (pass=3) then begin
@@ -2295,7 +2366,11 @@ begin
                      else if proton then
                        ElectricPotential:=ElectricPotential + abs(particle2_spin)*ProtonCharge/(4*Pi*r1*Permittivity)
                      else if neutron then
-                       ElectricPotential:=ElectricPotential + abs(particle2_spin)*NeutronCharge/(4*Pi*r1*Permittivity);
+                       ElectricPotential:=ElectricPotential + abs(particle2_spin)*NeutronCharge/(4*Pi*r1*Permittivity)
+                     else if quark_up then
+                       ElectricPotential:=ElectricPotential + abs(particle2_spin)*(2/3)*ProtonCharge/(4*Pi*r1*Permittivity)
+                     else if quark_down then
+                       ElectricPotential:=ElectricPotential + abs(particle2_spin)*(1/3)*ProtonCharge/(4*Pi*r1*Permittivity);
                    end;
                  end
                  else begin
@@ -2310,7 +2385,11 @@ begin
                    else if proton then
                      ElectricPotential:=ProtonCharge/(4*Pi*r*Permittivity)
                    else if neutron then
-                     ElectricPotential:=NeutronCharge/(4*Pi*r*Permittivity);
+                     ElectricPotential:=NeutronCharge/(4*Pi*r*Permittivity)
+                   else if quark_up then
+                     ElectricPotential:=(2/3)*ProtonCharge/(4*Pi*r*Permittivity)
+                   else if quark_down then
+                     ElectricPotential:=(1/3)*ProtonCharge/(4*Pi*r*Permittivity);
                  end;
                end
                else begin
@@ -2460,19 +2539,19 @@ begin
                      z := -((ProtonMass/Hhat)*points[NewScreen]^[xpos,ypos,zpos].PsiVect.z);
                    end
                    else if neutron then begin
-                     if two_particle_composite then begin
-                       x := -(-(ProtonMass/Hhat)*points[NewScreen]^[xpos,ypos,zpos].PsiVect.y);
-                       y := -((ProtonMass/Hhat)*points[NewScreen]^[xpos,ypos,zpos].PsiVect.x);
-                       z := -((ProtonMass/Hhat)*points[NewScreen]^[xpos,ypos,zpos].PsiVect.z);
-                       x := x -(-(ElectronMass/Hhat)*points[NewScreen]^[xpos,ypos,zpos].PsiVect.y);
-                       y := y -((ElectronMass/Hhat)*points[NewScreen]^[xpos,ypos,zpos].PsiVect.x);
-                       z := z -((ElectronMass/Hhat)*points[NewScreen]^[xpos,ypos,zpos].PsiVect.z);
-                     end
-                     else begin
-                       x := -(-(NeutronMass/Hhat)*points[NewScreen]^[xpos,ypos,zpos].PsiVect.y);
-                       y := -((NeutronMass/Hhat)*points[NewScreen]^[xpos,ypos,zpos].PsiVect.x);
-                       z := -((NeutronMass/Hhat)*points[NewScreen]^[xpos,ypos,zpos].PsiVect.z);
-                     end;
+                     x := -(-(NeutronMass/Hhat)*points[NewScreen]^[xpos,ypos,zpos].PsiVect.y);
+                     y := -((NeutronMass/Hhat)*points[NewScreen]^[xpos,ypos,zpos].PsiVect.x);
+                     z := -((NeutronMass/Hhat)*points[NewScreen]^[xpos,ypos,zpos].PsiVect.z);
+                   end
+                   else if quark_up then begin
+                     x := -(-(ProtonMass/Hhat)*points[NewScreen]^[xpos,ypos,zpos].PsiVect.y);
+                     y := -((ProtonMass/Hhat)*points[NewScreen]^[xpos,ypos,zpos].PsiVect.x);
+                     z := -((ProtonMass/Hhat)*points[NewScreen]^[xpos,ypos,zpos].PsiVect.z);
+                   end
+                   else if quark_down then begin
+                     x := -(-(ProtonMass/Hhat)*points[NewScreen]^[xpos,ypos,zpos].PsiVect.y);
+                     y := -((ProtonMass/Hhat)*points[NewScreen]^[xpos,ypos,zpos].PsiVect.x);
+                     z := -((ProtonMass/Hhat)*points[NewScreen]^[xpos,ypos,zpos].PsiVect.z);
                    end
                    else begin
                      x := -(-(ElectronMass/Hhat)*points[NewScreen]^[xpos,ypos,zpos].PsiVect.y);
@@ -2492,19 +2571,19 @@ begin
                      z := -((ProtonMass/Hhat)*points[NewScreen]^[xpos,ypos,zpos].PsiVect.x);
                    end
                    else if neutron then begin
-                     if two_particle_composite then begin
-                       x := -(-(ProtonMass/Hhat)*points[NewScreen]^[xpos,ypos,zpos].PsiVect.z);
-                       y := -((ProtonMass/Hhat)*points[NewScreen]^[xpos,ypos,zpos].PsiVect.y);
-                       z := -((ProtonMass/Hhat)*points[NewScreen]^[xpos,ypos,zpos].PsiVect.x);
-                       x := x -(-(ElectronMass/Hhat)*points[NewScreen]^[xpos,ypos,zpos].PsiVect.z);
-                       y := y -((ElectronMass/Hhat)*points[NewScreen]^[xpos,ypos,zpos].PsiVect.y);
-                       z := z -((ElectronMass/Hhat)*points[NewScreen]^[xpos,ypos,zpos].PsiVect.x);
-                     end
-                     else begin
-                       x := -(-(NeutronMass/Hhat)*points[NewScreen]^[xpos,ypos,zpos].PsiVect.z);
-                       y := -((NeutronMass/Hhat)*points[NewScreen]^[xpos,ypos,zpos].PsiVect.y);
-                       z := -((NeutronMass/Hhat)*points[NewScreen]^[xpos,ypos,zpos].PsiVect.x);
-                     end;
+                     x := -(-(NeutronMass/Hhat)*points[NewScreen]^[xpos,ypos,zpos].PsiVect.z);
+                     y := -((NeutronMass/Hhat)*points[NewScreen]^[xpos,ypos,zpos].PsiVect.y);
+                     z := -((NeutronMass/Hhat)*points[NewScreen]^[xpos,ypos,zpos].PsiVect.x);
+                   end
+                   else if quark_up then begin
+                     x := -(-(ProtonMass/Hhat)*points[NewScreen]^[xpos,ypos,zpos].PsiVect.z);
+                     y := -((ProtonMass/Hhat)*points[NewScreen]^[xpos,ypos,zpos].PsiVect.y);
+                     z := -((ProtonMass/Hhat)*points[NewScreen]^[xpos,ypos,zpos].PsiVect.x);
+                   end
+                   else if quark_down then begin
+                     x := -(-(ProtonMass/Hhat)*points[NewScreen]^[xpos,ypos,zpos].PsiVect.z);
+                     y := -((ProtonMass/Hhat)*points[NewScreen]^[xpos,ypos,zpos].PsiVect.y);
+                     z := -((ProtonMass/Hhat)*points[NewScreen]^[xpos,ypos,zpos].PsiVect.x);
                    end
                    else begin
                      x := -(-(ElectronMass/Hhat)*points[NewScreen]^[xpos,ypos,zpos].PsiVect.z);
@@ -2548,20 +2627,20 @@ begin
                  ElecFieldFromA.y := -sqr(ProtonMass * SpeedOfLight / Hhat)*points[NewScreen]^[xpos,ypos,zpos].PsiVect.y;
                  ElecFieldFromA.z := -sqr(ProtonMass * SpeedOfLight / Hhat)*points[NewScreen]^[xpos,ypos,zpos].PsiVect.z;
                end
-               else if neutron then with ElecFieldFromA do begin
-                 if two_particle_composite then begin
-                   x := -sqr(ProtonMass * SpeedOfLight / Hhat)*points[NewScreen]^[xpos,ypos,zpos].PsiVect.x;
-                   y := -sqr(ProtonMass * SpeedOfLight / Hhat)*points[NewScreen]^[xpos,ypos,zpos].PsiVect.y;
-                   z := -sqr(ProtonMass * SpeedOfLight / Hhat)*points[NewScreen]^[xpos,ypos,zpos].PsiVect.z;
-                   x := x -sqr(ElectronMass * SpeedOfLight / Hhat)*points[NewScreen]^[xpos,ypos,zpos].PsiVect.x;
-                   y := y -sqr(ElectronMass * SpeedOfLight / Hhat)*points[NewScreen]^[xpos,ypos,zpos].PsiVect.y;
-                   z := z -sqr(ElectronMass * SpeedOfLight / Hhat)*points[NewScreen]^[xpos,ypos,zpos].PsiVect.z;
-                 end
-                 else begin
-                   ElecFieldFromA.x := -sqr(NeutronMass * SpeedOfLight / Hhat)*points[NewScreen]^[xpos,ypos,zpos].PsiVect.x;
-                   ElecFieldFromA.y := -sqr(NeutronMass * SpeedOfLight / Hhat)*points[NewScreen]^[xpos,ypos,zpos].PsiVect.y;
-                   ElecFieldFromA.z := -sqr(NeutronMass * SpeedOfLight / Hhat)*points[NewScreen]^[xpos,ypos,zpos].PsiVect.z;
-                 end;
+               else if neutron then begin
+                 ElecFieldFromA.x := -sqr(NeutronMass * SpeedOfLight / Hhat)*points[NewScreen]^[xpos,ypos,zpos].PsiVect.x;
+                 ElecFieldFromA.y := -sqr(NeutronMass * SpeedOfLight / Hhat)*points[NewScreen]^[xpos,ypos,zpos].PsiVect.y;
+                 ElecFieldFromA.z := -sqr(NeutronMass * SpeedOfLight / Hhat)*points[NewScreen]^[xpos,ypos,zpos].PsiVect.z;
+               end
+               else if quark_up then begin
+                 ElecFieldFromA.x := -sqr(ProtonMass * SpeedOfLight / Hhat)*points[NewScreen]^[xpos,ypos,zpos].PsiVect.x;
+                 ElecFieldFromA.y := -sqr(ProtonMass * SpeedOfLight / Hhat)*points[NewScreen]^[xpos,ypos,zpos].PsiVect.y;
+                 ElecFieldFromA.z := -sqr(ProtonMass * SpeedOfLight / Hhat)*points[NewScreen]^[xpos,ypos,zpos].PsiVect.z;
+               end
+               else if quark_down then begin
+                 ElecFieldFromA.x := -sqr(ProtonMass * SpeedOfLight / Hhat)*points[NewScreen]^[xpos,ypos,zpos].PsiVect.x;
+                 ElecFieldFromA.y := -sqr(ProtonMass * SpeedOfLight / Hhat)*points[NewScreen]^[xpos,ypos,zpos].PsiVect.y;
+                 ElecFieldFromA.z := -sqr(ProtonMass * SpeedOfLight / Hhat)*points[NewScreen]^[xpos,ypos,zpos].PsiVect.z;
                end
                else begin
                  ElecFieldFromA.x := -sqr(ElectronMass * SpeedOfLight / Hhat)*points[NewScreen]^[xpos,ypos,zpos].PsiVect.x;
@@ -3023,6 +3102,14 @@ begin
          else if neutron then begin
            if (E_Energy_Tot > 0)  then PowerCorrectionFactor_E:=sqrt((EnergyFactor*NeutronMass*SpeedOfLight*SpeedOfLight)/E_Energy_Tot); // correct for model inaccuracy
            if (B_Energy_Tot > 0)  then PowerCorrectionFactor_B:=sqrt((EnergyFactor*NeutronMass*SpeedOfLight*SpeedOfLight)/B_Energy_Tot); // correct for model inaccuracy
+         end
+         else if quark_up then begin
+           if (E_Energy_Tot > 0)  then PowerCorrectionFactor_E:=sqrt((EnergyFactor*UpQuarkMass*SpeedOfLight*SpeedOfLight)/E_Energy_Tot); // correct for model inaccuracy
+           if (B_Energy_Tot > 0)  then PowerCorrectionFactor_B:=sqrt((EnergyFactor*UpQuarkMass*SpeedOfLight*SpeedOfLight)/B_Energy_Tot); // correct for model inaccuracy
+         end
+         else if quark_down then begin
+           if (E_Energy_Tot > 0)  then PowerCorrectionFactor_E:=sqrt((EnergyFactor*DownQuarkMass*SpeedOfLight*SpeedOfLight)/E_Energy_Tot); // correct for model inaccuracy
+           if (B_Energy_Tot > 0)  then PowerCorrectionFactor_B:=sqrt((EnergyFactor*DownQuarkMass*SpeedOfLight*SpeedOfLight)/B_Energy_Tot); // correct for model inaccuracy
          end
          else begin
            if (E_Energy_Tot > 0)  then PowerCorrectionFactor_E:=sqrt((EnergyFactor*ElectronMass*SpeedOfLight*SpeedOfLight)/E_Energy_Tot); // correct for model inaccuracy
@@ -4572,6 +4659,28 @@ procedure TForm1.Start26Click(Sender: TObject);
 {The 26th Start option has been selected}
 begin
   New_StartOption:=26;
+  if StartOption<>New_StartOption then begin
+    DoUpdate:=true;
+    Restart:=true;
+    ProfileCancel();
+  end;
+end;
+
+procedure TForm1.Start27Click(Sender: TObject);
+{The 27th Start option has been selected}
+begin
+  New_StartOption:=27;
+  if StartOption<>New_StartOption then begin
+    DoUpdate:=true;
+    Restart:=true;
+    ProfileCancel();
+  end;
+end;
+
+procedure TForm1.Start28Click(Sender: TObject);
+{The 28th Start option has been selected}
+begin
+  New_StartOption:=28;
   if StartOption<>New_StartOption then begin
     DoUpdate:=true;
     Restart:=true;
